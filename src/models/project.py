@@ -24,45 +24,51 @@ class ProjectRoleEnum(str, Enum):
 
 
 @dataclass
+class Tag:
+    tag_id: uuid.UUID
+    name: str
+
+
+@dataclass
 class Project:
     id: uuid.UUID
     label: str
     creator: str
     short_description: str
     description: str
-    tags: list
+    tags: list[Tag]
+    created_at: datetime
+    updated_at: datetime
     status: ProjectStatusEnum
 
 
 @dataclass
 class Post:
-    id: uuid.UUID
+    post_id: uuid.UUID
+    project_id: uuid.UUID
     label: str
     creator: str
     short_description: str
     description: str
-    project_id: uuid.UUID
+    created_at: datetime
 
 
 @dataclass
 class Task:
-    id: uuid.UUID
+    task_id: uuid.UUID
+    project_id: uuid.UUID
     label: str
     creator: str
     short_description: str
     description: str
-    project_id: uuid.UUID
-
-
-@dataclass
-class Tag:
-    tag_id: uuid.UUID
-    name: str
-    count: int
+    created_at: datetime
+    answers_count: int = 0
+    status: TaskStatusEnum
 
 
 @dataclass
 class DenormUser:
     id: uuid.UUID
     name: str
+    role: ProjectRoleEnum
     avatar_link: str

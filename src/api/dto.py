@@ -1,84 +1,101 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from typing import Optional, List
+from typing import Optional, Union
 from datetime import datetime
+from src.models.project import ProjectRoleEnum, ProjectStatusEnum, TaskStatusEnum
 
 
 class TagDTO(BaseModel):
-    id: UUID
+    tag_id: UUID
     name: str
-
-    class Config:
-        from_attributes = True
 
 
 class TaskDTO(BaseModel):
-    id: UUID
+    task_id: UUID
     project_id: UUID
-    title: str
+    label: str
+    creator: str
+    short_description: str
     description: str
-    requirements: Optional[str]
     created_at: datetime
     answers_count: int = 0
 
-    class Config:
-        from_attributes = True
+
+class TaskCreateDTO(BaseModel):
+    project_id: UUID
+    label: str = Field(..., min_length=3, max_length=200)
+    creator: str
+    short_description: str = Field(..., max_length=300)
+    description: str = Field(..., max_length=10000)
+    status: TaskStatusEnum = TaskStatusEnum.ACTIVE
+
+
+class TaskUpdateDTO(BaseModel):
+    project_id: UUID
+    label: str = Field(..., min_length=3, max_length=200)
+    creator: str
+    short_description: str = Field(..., max_length=300)
+    description: str = Field(..., max_length=10000)
+    status: TaskStatusEnum
+
+
+class PostDTO(BaseModel):
+    post_id: UUID
+    project_id: UUID
+    label: str
+    creator: str
+    short_description: str
+    description: str
+    created_at: datetime
+
+
+class PostCreateDTO(BaseModel):
+    project_id: UUID
+    label: str = Field(..., min_length=3, max_length=200)
+    creator: str
+    short_description: str = Field(..., max_length=300)
+    description: str = Field(..., max_length=10000)
+
+
+class PostUpdateDTO(BaseModel):
+    project_id: UUID
+    label: str = Field(..., min_length=3, max_length=200)
+    creator: str
+    short_description: str = Field(..., max_length=300)
+    description: str = Field(..., max_length=10000)
 
 
 class ProjectDTO(BaseModel):
     id: UUID
-    title: str
-    description: str
+    label: str
+    creator: str
     short_description: str
-    tags: List[TagDTO]
-    author_id: UUID
+    description: str
+    tags: list[TagDTO]
     created_at: datetime
     updated_at: datetime
-    is_active: bool
+    status: ProjectStatusEnum
 
 
 class ProjectDetailDTO(ProjectDTO):
-    tasks: List[TaskDTO]
+    posts: list[Union[TaskDTO, PostDTO]]
 
 
 class ProjectCreateDTO(BaseModel):
-    title: str = Field(..., min_length=3, max_length=200)
-    description: str
+    label: str = Field(..., min_length=3, max_length=200)
     short_description: str = Field(..., max_length=300)
-    tags: List[str]
-    is_active: bool = True
+    description: str = Field(..., max_length=10000)
+    tags: list[str]
+    creator: str
+    status: ProjectStatusEnum = ProjectStatusEnum.ACTIVE
 
 
 class ProjectUpdateDTO(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    short_description: Optional[str] = None
-    tags: Optional[List[str]] = None
-    is_active: Optional[bool] = None
-
-
-class ReportDTO(BaseModel):
-    id: UUID
-    task_id: UUID
-    user_id: UUID
-    content: str
-    media_ids: List[UUID] = []
-    status: str = "pending"  # pending/approved/rejected
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class ReportCreateDTO(BaseModel):
-    task_id: UUID
-    content: str
-    media_ids: List[UUID] = []
-
-
-class ReportReviewDTO(BaseModel):
-    status: str  # approved/rejected
-    comment: Optional[str] = None
+    label: str = Field(..., min_length=3, max_length=200)
+    short_description: str = Field(..., max_length=300)
+    description: str = Field(..., max_length=10000)
+    tags: list[str]
+    status: ProjectStatusEnum
 
 
 class ProjectStatsDTO(BaseModel):
@@ -86,3 +103,10 @@ class ProjectStatsDTO(BaseModel):
     tasks_count: int
     participants_count: int
     answers_count: int
+
+
+class DenormUserDTO(BaseModel):
+    id: uuid.UUID
+    name: str
+    role: ProjectRoleEnum
+    avatar_link: str
