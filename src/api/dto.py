@@ -3,12 +3,14 @@ from uuid import UUID
 from typing import Optional, List
 from datetime import datetime
 
+
 class TagDTO(BaseModel):
     id: UUID
     name: str
-    
+
     class Config:
         from_attributes = True
+
 
 class TaskDTO(BaseModel):
     id: UUID
@@ -18,9 +20,10 @@ class TaskDTO(BaseModel):
     requirements: Optional[str]
     created_at: datetime
     answers_count: int = 0
-    
+
     class Config:
         from_attributes = True
+
 
 class ProjectDTO(BaseModel):
     id: UUID
@@ -33,8 +36,10 @@ class ProjectDTO(BaseModel):
     updated_at: datetime
     is_active: bool
 
+
 class ProjectDetailDTO(ProjectDTO):
     tasks: List[TaskDTO]
+
 
 class ProjectCreateDTO(BaseModel):
     title: str = Field(..., min_length=3, max_length=200)
@@ -43,12 +48,14 @@ class ProjectCreateDTO(BaseModel):
     tags: List[str]
     is_active: bool = True
 
+
 class ProjectUpdateDTO(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     short_description: Optional[str] = None
     tags: Optional[List[str]] = None
     is_active: Optional[bool] = None
+
 
 class ReportDTO(BaseModel):
     id: UUID
@@ -58,18 +65,21 @@ class ReportDTO(BaseModel):
     media_ids: List[UUID] = []
     status: str = "pending"  # pending/approved/rejected
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class ReportCreateDTO(BaseModel):
     task_id: UUID
     content: str
     media_ids: List[UUID] = []
 
+
 class ReportReviewDTO(BaseModel):
     status: str  # approved/rejected
     comment: Optional[str] = None
+
 
 class ProjectStatsDTO(BaseModel):
     project_id: UUID
