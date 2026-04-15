@@ -19,6 +19,7 @@ class TaskDTO(BaseModel):
     description: str
     created_at: datetime
     answers_count: int = 0
+    status: TaskStatusEnum
 
 
 class TaskCreateDTO(BaseModel):
@@ -78,7 +79,7 @@ class ProjectDTO(BaseModel):
 
 
 class ProjectDetailDTO(ProjectDTO):
-    posts: list[Union[TaskDTO, PostDTO]]
+    activities: list[Union[TaskDTO, PostDTO]] = []
 
 
 class ProjectCreateDTO(BaseModel):

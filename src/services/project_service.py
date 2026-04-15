@@ -1,5 +1,5 @@
 from src.models.project import Project, Post, Task, DenormUser, TaskStatusEnum, ProjectStatusEnum, ProjectRoleEnum
-from src.services.protocols import ProfileRepository, ProfileKafkaProducer
+from src.services.protocols import ProjectRepository, ProjectKafkaProducer
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
 import uuid
@@ -8,10 +8,10 @@ import uuid
 class ProjectService():
     def __init__(
         self,
-        profile_repository: ProfileRepository,
-        kafka_producer: ProfileKafkaProducer
+        project_repository: ProjectRepository,
+        kafka_producer: ProjectKafkaProducer
     ) -> None:
-        self._profile_repository = profile_repository
+        self._project_repository = project_repository
         self._kafka_producer = kafka_producer
 
     async def create_project(self, project: Project) -> None: ...

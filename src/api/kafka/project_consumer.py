@@ -2,9 +2,9 @@ from aiokafka import AIOKafkaConsumer
 from src.services.project_service import ProjectService
 
 
-class ProfileKafkaConsumer:
+class ProjectKafkaConsumer:
     def __init__(
-        self, consumer: AIOKafkaConsumer, profile_service: ProjectService
+        self, consumer: AIOKafkaConsumer, project_service: ProjectService
     ) -> None: ...
 
     async def start(self) -> None: ...

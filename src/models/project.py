@@ -62,8 +62,8 @@ class Task:
     short_description: str
     description: str
     created_at: datetime
-    answers_count: int = 0
     status: TaskStatusEnum
+    answers_count: int = 0
 
 
 @dataclass

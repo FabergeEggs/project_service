@@ -25,6 +25,12 @@ async def _run(settings: Settings) -> None:
         max_size=settings.database_max_connections,
     )
 
+    try:
+        async with pool.connection() as conn:
+            logger.info("Postgres connected")
+    except Exception as e:
+        logger.error("Postgres connection failed: {}", e)
+
     project_repository = ProjectPostgresRepository(pool)
     logger.debug("Database connection established")
 
