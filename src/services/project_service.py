@@ -19,7 +19,7 @@ class ProjectService():
 
         try:
             await self._project_repository.create_project(project)
-            await self._kafka_producer.send_create_project(project)
+            self._kafka_producer.send_create_project(project)
             return project.id
         except adapter_errors.ProjectAlreadyExistsError:
             raise project_errors.ProjectAlreadyExistsError(
@@ -91,7 +91,7 @@ class ProjectService():
         post.id = uuid4()
         try:
             await self._project_repository.create_post(post)
-            await self._kafka_producer.send_create_post(post)
+            self._kafka_producer.send_create_post(post)
             return post.id
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
@@ -103,7 +103,7 @@ class ProjectService():
     async def update_post(self, post: Post) -> None:
         try:
             await self._project_repository.update_post(post)
-            await self._kafka_producer.send_update_post(post)
+            self._kafka_producer.send_update_post(post)
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Project of this post doesn't exist")
@@ -114,7 +114,7 @@ class ProjectService():
     async def delete_post(self, id: UUID) -> None:
         try:
             await self._project_repository.delete_post(id)
-            await self._kafka_producer.send_delete_post(id)
+            self._kafka_producer.send_delete_post(id)
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Project of this post doesn't exist")

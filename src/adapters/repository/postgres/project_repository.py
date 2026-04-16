@@ -20,9 +20,11 @@ class ProjectPostgresRepository:
             ON CONFLICT (name) DO UPDATE SET
                 count = tags.count + 1
             """,
-            tag_id,
-            tag.name,
-            tag.quantity_count or 1
+            (
+                tag_id,
+                tag.name,
+                tag.quantity_count or 1
+            )
         )
 
         result = await conn.execute(
@@ -76,7 +78,9 @@ class ProjectPostgresRepository:
                             VALUES (%s, %s)
                             ON CONFLICT (project_id, tag_id) DO NOTHING
                             """,
-                            project_id, tag_id
+                            (
+                                project_id, tag_id
+                            )
                         )
 
                 return project_id
@@ -86,9 +90,10 @@ class ProjectPostgresRepository:
             async with conn.transaction():
                 result = await conn.execute(
                     """
-                    SELECT id, label, description, creator, status, created_at
+                    SELECT id, label, short_description, description,
+                    creator, status, created_at, updated_at
                     FROM project
-                    WHERE id = %s AND status != 'deleted'
+                    WHERE id = %s AND status != 'DELETED'
                     """,
                     (id,)
                 )
@@ -119,10 +124,12 @@ class ProjectPostgresRepository:
                 return Project(
                     id=row[0],
                     label=row[1],
-                    description=row[2],
-                    creator=row[3],
-                    status=ProjectStatusEnum(row[4]),
-                    created_at=row[5],
+                    short_description=row[2],
+                    description=row[3],
+                    creator=row[4],
+                    status=ProjectStatusEnum(row[5]),
+                    created_at=row[6],
+                    updated_at=row[7],
                     tags=tags
                 )
 
@@ -138,9 +145,9 @@ class ProjectPostgresRepository:
                     ON puc.project_id = p.id
                 LEFT JOIN task t
                     ON t.project_id = p.id
-                    AND t.status != 'deleted'
+                    AND t.status != 'DELETED'
                 WHERE p.id = %s
-                    AND p.status != 'deleted'
+                    AND p.status != 'DELETED'
                 GROUP BY p.id
                 """,
                 (id,)
@@ -182,12 +189,14 @@ class ProjectPostgresRepository:
                     WHERE id = %s
                     RETURNING id
                     """,
-                    project.label,
-                    project.short_description,
-                    project.description,
-                    now,
-                    project.status.value,
-                    project.id
+                    (
+                        project.label,
+                        project.short_description,
+                        project.description,
+                        now,
+                        project.status.value,
+                        project.id
+                    )
                 )
 
                 row = await result.fetchone()
@@ -209,16 +218,20 @@ class ProjectPostgresRepository:
                             INSERT INTO project_tag_connection (project_id, tag_id)
                             VALUES (%s, %s)
                             """,
-                            project.id, tag_id
+                            (
+                                project.id,
+                                tag_id
+                            )
                         )
 
     async def get_projects(self, ids: list[UUID]) -> list[Project]:
         async with self._pool.connection() as conn:
             result = await conn.execute(
                 """
-                SELECT id, label, short_description, creator, status, created_at
+                SELECT id, label, short_description, description,
+                creator, status, created_at, updated_at
                 FROM project
-                WHERE id = ANY(%s) AND status != 'deleted'
+                WHERE id = ANY(%s) AND status != 'DELETED'
                 """,
                 (ids,)
             )
@@ -248,9 +261,11 @@ class ProjectPostgresRepository:
                     id=row[0],
                     label=row[1],
                     short_description=row[2],
-                    creator=row[3],
-                    status=ProjectStatusEnum(row[4]),
-                    created_at=row[5],
+                    description=row[3],
+                    creator=row[4],
+                    status=ProjectStatusEnum(row[5]),
+                    created_at=row[6],
+                    updated_at=row[7],
                     tags=tags
                 ))
 
@@ -277,8 +292,8 @@ class ProjectPostgresRepository:
                 FROM project_user_connection puc
                 JOIN project p ON p.id = puc.project_id
                 WHERE puc.user_id = %s
-                    AND p.status != 'deleted'
-                    AND puc.role != 'deleted'
+                    AND p.status != 'DELETED'
+                    AND puc.role != 'DELETED'
                 """,
                 (user_id,)
             )

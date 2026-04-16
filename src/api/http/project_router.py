@@ -54,16 +54,18 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
     async def get_project_info(project_id: UUID):
         try:
             project = await project_service.get_project_info(project_id)
-            return ProjectInfoDTO(
+            return ProjectDTO(
                 id=project.id,
                 label=project.label,
                 creator=project.creator,
+                short_description=project.short_description,
                 description=project.description,
                 tags=[
                     TagDTO(tag_id=tag.tag_id, name=tag.name)
                     for tag in project.tags
                 ],
                 created_at=project.created_at,
+                updated_at=project.updated_at,
                 status=project.status
             )
         except project_errors.ProjectNotFoundError as e:
@@ -77,14 +79,14 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             return ProjectStatsDTO(
                 project_id=stats["project_id"],
                 tasks_count=stats["tasks_count"],
-                participants_count=stats["participants_count"],
+                participants_count=stats["members_count"],
                 answers_count=stats["answers_count"]
             )
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-    @router.get("/{project_id}", response_model=dict)
+    @router.put("/{project_id}", response_model=dict)
     async def update_project(project_id: UUID, project_data: ProjectUpdateDTO):
         try:
             existing = await project_service.get_project_info(project_id)
