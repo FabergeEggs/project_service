@@ -1,5 +1,5 @@
 -- depends:
-CREATE TYPE project_status AS ENUM('active', 'finished', 'deleted');
+CREATE TYPE project_status AS ENUM('ACTIVE', 'FINISHED', 'DELETED');
 
 CREATE TABLE IF NOT EXISTS
     project (

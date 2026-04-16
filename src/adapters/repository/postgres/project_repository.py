@@ -46,14 +46,16 @@ class ProjectPostgresRepository:
                             creator, status, created_at, updated_at
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         """,
-                        project_id,
-                        project.label,
-                        project.short_description,
-                        project.description,
-                        project.creator,
-                        project.status.value,
-                        project.created_at or now,
-                        project.updated_at or now
+                        (
+                            project_id,
+                            project.label,
+                            project.short_description,
+                            project.description,
+                            project.creator,
+                            project.status.value,
+                            project.created_at or now,
+                            project.updated_at or now
+                        )
                     )
                 except psycopg_errors.UniqueViolation as e:
                     raise adapter_errors.ProjectAlreadyExistsError(
