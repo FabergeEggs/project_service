@@ -18,29 +18,29 @@ class ProjectAlreadyExistsError(ProjectError):
     ...
 
 
-class ProjectPostNotFoundError(PostError):
+class PostNotFoundError(PostError):
     ...
 
 
-class ProjectPostAlreadyExistsError(PostError):
+class PostAlreadyExistsError(PostError):
     ...
 
 
-class ProjectTaskNotFoundError(TaskError):
+class TaskNotFoundError(TaskError):
     ...
 
 
-class ProjectTaskAlreadyExistsError(TaskError):
+class TaskAlreadyExistsError(TaskError):
     ...
 
 
-class ProjectUserErorr(Exception):
+class UserErorr(Exception):
     ...
 
 
-class ProjectUserNotFoundError(ProjectUserErorr):
+class UserNotFoundError(UserErorr):
     ...
 
 
-class ProjectUserAlreadyExistsError(ProjectUserErorr):
+class UserAlreadyExistsError(UserErorr):
     ...
