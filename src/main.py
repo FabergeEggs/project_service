@@ -14,6 +14,8 @@ from src.api.kafka.project_consumer import ProjectKafkaConsumer
 from src.services.project_service import ProjectService
 from src.config import Settings
 
+from migrations.migrate import up, down, drop
+
 
 async def _run(settings: Settings) -> None:
     # Connecting database interconnection implementation with Duck Typing
@@ -109,6 +111,26 @@ def migrate() -> None:
     settings = Settings()
     _setup_logger(settings)
     logger.info("Running migration...")
+    up(settings.database_dsn)
+    logger.info("Migration completed.")
+
+
+@app.command()
+def migrate_down() -> None:
+    settings = Settings()
+    _setup_logger(settings)
+    logger.info("Rolling back migration...")
+    down(settings.database_dsn)
+    logger.info("Rollback completed.")
+
+
+@app.command()
+def migrate_drop() -> None:
+    settings = Settings()
+    _setup_logger(settings)
+    logger.info("Dropping database...")
+    drop(settings.database_dsn)
+    logger.info("Database dropped.")
 
 
 if __name__ == "__main__":
