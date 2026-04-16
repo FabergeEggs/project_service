@@ -32,3 +32,15 @@ class ProjectTaskNotFoundError(TaskError):
 
 class ProjectTaskAlreadyExistsError(TaskError):
     ...
+
+
+class ProjectUserErorr(Exception):
+    ...
+
+
+class ProjectUserNotFoundError(ProjectUserErorr):
+    ...
+
+
+class ProjectUserAlreadyExistsError(ProjectUserErorr):
+    ...

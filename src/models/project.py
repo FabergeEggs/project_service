@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-import uuid
+from uuid import UUID
 
 
 class ProjectStatusEnum(str, Enum):
@@ -25,13 +25,14 @@ class ProjectRoleEnum(str, Enum):
 
 @dataclass
 class Tag:
-    tag_id: uuid.UUID
+    tag_id: UUID
     name: str
+    quantity_count: int = 0
 
 
 @dataclass
 class Project:
-    id: uuid.UUID
+    id: UUID
     label: str
     creator: str
     short_description: str
@@ -44,8 +45,8 @@ class Project:
 
 @dataclass
 class Post:
-    post_id: uuid.UUID
-    project_id: uuid.UUID
+    post_id: UUID
+    project_id: UUID
     label: str
     creator: str
     short_description: str
@@ -55,8 +56,8 @@ class Post:
 
 @dataclass
 class Task:
-    task_id: uuid.UUID
-    project_id: uuid.UUID
+    task_id: UUID
+    project_id: UUID
     label: str
     creator: str
     short_description: str
@@ -68,7 +69,7 @@ class Task:
 
 @dataclass
 class DenormUser:
-    id: uuid.UUID
+    id: UUID
     name: str
     role: ProjectRoleEnum
     avatar_link: str

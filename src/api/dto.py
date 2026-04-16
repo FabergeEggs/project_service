@@ -8,6 +8,7 @@ from src.models.project import ProjectRoleEnum, ProjectStatusEnum, TaskStatusEnu
 class TagDTO(BaseModel):
     tag_id: UUID
     name: str
+    quantity_count: int = 0
 
 
 class TaskDTO(BaseModel):
