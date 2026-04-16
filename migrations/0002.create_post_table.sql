@@ -1,4 +1,4 @@
--- depends: 0001.create_project_table.sql
+-- depends: 0001.create_project_table
 CREATE TABLE IF NOT EXISTS
     post (
         id UUID PRIMARY KEY,

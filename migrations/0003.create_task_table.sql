@@ -1,4 +1,4 @@
--- depends: 0001.create_project_table.sql
+-- depends: 0001.create_project_table
 CREATE TYPE task_status AS ENUM('active', 'finished', 'deleted');
 
 CREATE TABLE IF NOT EXISTS

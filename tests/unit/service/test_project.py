@@ -63,9 +63,6 @@ class TestCreateProject:
         result = await service.create_project(project)
 
         repo.create_project.assert_awaited_once_with(project)
-        repo.add_tags.assert_awaited_once_with(project.id, project.tags)
-        repo.add_tags_to_project_connection.assert_awaited_once_with(
-            service, project.id, project.tags)
         kafka.send_create_project.assert_awaited_once_with(project)
         assert result == project.id
 
@@ -87,9 +84,6 @@ class TestUpdateProject:
         await service.update_project(project)
 
         repo.update_project.assert_awaited_once_with(project)
-        repo.add_tags.assert_awaited_once_with(project.id, project.tags)
-        repo.add_tags_to_project_connection.assert_awaited_once_with(
-            service, project.id, project.tags)
         kafka.send_update_project.assert_called_once_with(project)
 
     @pytest.mark.asyncio

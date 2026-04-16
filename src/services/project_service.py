@@ -19,8 +19,6 @@ class ProjectService():
 
         try:
             await self._project_repository.create_project(project)
-            await self._project_repository.add_tags(project.id, project.tags)
-            await self._project_repository.add_tags_to_project_connection(self, project.id, project.tags)
             await self._kafka_producer.send_create_project(project)
             return project.id
         except adapter_errors.ProjectAlreadyExistsError:
@@ -30,8 +28,6 @@ class ProjectService():
     async def update_project(self, project: Project) -> None:
         try:
             await self._project_repository.update_project(project)
-            await self._project_repository.add_tags(project.id, project.tags)
-            await self._project_repository.add_tags_to_project_connection(self, project.id, project.tags)
             self._kafka_producer.send_update_project(project)
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
@@ -45,7 +41,7 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
 
-    async def get_project_statistics(self, id: UUID) -> list[int]:
+    async def get_project_statistics(self, id: UUID) -> dict:
         try:
             statistics = await self._project_repository.get_project_statistics(id)
             return statistics
@@ -146,10 +142,9 @@ class ProjectService():
             raise project_errors.UserNotFoundError(
                 "Couldn't find user by given ID")
 
-    async def add_member(self, progect_id: UUID, user: DenormUser) -> None:
+    async def add_member(self, project_id: UUID, user: DenormUser) -> None:
         try:
-            await self._project_repository.add_member(progect_id, user)
-            await self._project_repository.add_user_to_project_connection(progect_id, user.id)
+            await self._project_repository.add_member(project_id, user)
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
@@ -160,7 +155,6 @@ class ProjectService():
     async def remove_member(self, project_id: UUID, user_id: UUID) -> None:
         try:
             await self._project_repository.remove_member(project_id, user_id)
-            await self._project_repository.remove_user_from_project_connection(project_id, user_id)
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")

@@ -27,7 +27,7 @@ def down(database_dsn: str) -> None:
     with backend.lock():
         applied = backend.to_apply(migrations)
         if applied:
-            backend.rollback_migration(applied[:1])
+            backend.rollback_migrations(applied[:1])
 
 
 def drop(database_dsn: str) -> None:
