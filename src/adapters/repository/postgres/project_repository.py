@@ -135,7 +135,8 @@ class ProjectPostgresRepository:
                 """
                 SELECT
                     COUNT(DISTINCT puc.user_id) as members_count,
-                    COUNT(t.id) as tasks_count
+                    COUNT(t.id) as tasks_count,
+                    COALESCE(SUM(t.answers_count), 0) as total_answers_count
                 FROM project p
                 LEFT JOIN project_user_connection puc
                     ON puc.project_id = p.id
@@ -158,9 +159,7 @@ class ProjectPostgresRepository:
 
             members_count = row[0] if row[0] is not None else 0
             tasks_count = row[1] if row[1] is not None else 0
-
-            # TODO: fetch answer count from response service when it will be implemented
-            answers_count = 0
+            answers_count = row[2] if row[2] is not None else 0
 
             return {
                 "project_id": str(id),
@@ -336,7 +335,7 @@ class ProjectPostgresRepository:
                         f"Task with id {task_id} not found"
                     )
 
-    async def get_project_tasks(self, id: UUID) -> list[Task]: ...
+    async def get_task(self, id: UUID) -> Task: ...
 
     async def increment_task_answer(self, id: UUID) -> None:
         async with self._pool.connection() as conn:
@@ -462,7 +461,7 @@ class ProjectPostgresRepository:
                         f"Post with id {id} doesn't exist"
                     )
 
-    async def get_project_posts(self, id: UUID) -> list[Post]: ...
+    async def get_posts(self, id: UUID) -> Post: ...
 
     async def get_user_memberships(
             self, user_id: UUID) -> list[list[UUID]]:

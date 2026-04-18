@@ -174,6 +174,3 @@ class ProjectService():
         except adapter_errors.UserNotFoundError:
             raise project_errors.UserNotFoundError(
                 "Couldn't find user by given ID")
-        except adapter_errors.UserAlreadyExistsError:
-            raise project_errors.UserAlreadyExistsError(
-                "User is not a member of this project")

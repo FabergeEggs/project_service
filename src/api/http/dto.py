@@ -33,13 +33,12 @@ class TaskCreateDTO(BaseModel):
 
 
 class TaskUpdateDTO(BaseModel):
-    task_id: UUID
-    project_id: UUID
-    label: str = Field(..., min_length=3, max_length=255)
-    creator: str
-    short_description: str = Field(..., max_length=500)
-    description: str = Field(..., max_length=5000)
-    status: TaskStatusEnum
+    task_id: Optional[UUID] = None
+    project_id: Optional[UUID] = None
+    label: Optional[str] = Field(None, min_length=3, max_length=255)
+    short_description: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = Field(None, max_length=5000)
+    status: Optional[TaskStatusEnum] = None
 
 
 class PostDTO(BaseModel):
@@ -62,11 +61,10 @@ class PostCreateDTO(BaseModel):
 
 
 class PostUpdateDTO(BaseModel):
-    project_id: UUID
-    label: str = Field(..., min_length=3, max_length=255)
-    creator: str
-    short_description: str = Field(..., max_length=500)
-    description: str = Field(..., max_length=5000)
+    project_id: Optional[UUID]
+    label: Optional[str] = Field(None, min_length=3, max_length=255)
+    short_description: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = Field(None, max_length=5000)
 
 
 class ProjectDTO(BaseModel):

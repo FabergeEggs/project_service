@@ -143,4 +143,185 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
+    @router.post("/{project_id}/task", response_model=dict, status_code=status.HTTP_201_CREATED)
+    async def create_task(project_id: UUID, task_data: TaskCreateDTO):
+        task = Task(
+            task_id=None,
+            project_id=project_id,
+            label=task_data.label,
+            creator=task_data.creator,
+            short_description=task_data.short_description,
+            description=task_data.description,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+            status=TaskStatusEnum.ACTIVE,
+            answers_count=0
+        )
+
+        try:
+            task_id = await project_service.create_task(task)
+            return {"id": task_id, "message": "Task created successfully"}
+        except project_errors.ProjectNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(e)
+            )
+
+    @router.patch("/{project_id}/task/{task_id}", response_model=dict)
+    async def update_task(task_id: UUID, task_data: TaskUpdateDTO):
+        try:
+            existing = await project_service.get_task(task_id)
+        except project_errors.TaskNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+        task = Task(
+            task_id=task_id,
+            project_id=existing.project_id,
+            label=task_data.label if task_data.label else existing.label,
+            creator=existing.creator,
+            short_description=task_data.short_description if task_data.short_description else existing.short_description,
+            description=task_data.description if task_data.description else existing.description,
+            created_at=existing.created_at,
+            updated_at=datetime.now(timezone.utc),
+            status=TaskStatusEnum(
+                task_data.status) if task_data.status else existing.status,
+            answers_count=existing.answers_count
+        )
+
+        try:
+            await project_service.update_task(task)
+            return {"message": "Task updated successfully"}
+        except project_errors.TaskNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+    @router.get("/{project_id}/task/{task_id}", response_model=TaskDTO)
+    async def get_task(task_id: UUID):
+        try:
+            task = await project_service.get_task(task_id)
+            return TaskDTO(
+                task_id=task.task_id,
+                project_id=task.project_id,
+                label=task.label,
+                creator=task.creator,
+                short_description=task.short_description,
+                description=task.description,
+                created_at=task.created_at,
+                updated_at=task.updated_at,
+                status=task.status,
+                answers_count=task.answers_count
+            )
+        except project_errors.TaskNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+    @router.post("/{project_id}/post", response_model=dict, status_code=status.HTTP_201_CREATED)
+    async def create_post(project_id: UUID, post_data: PostCreateDTO):
+        post = Post(
+            post_id=None,
+            project_id=project_id,
+            label=post_data.label,
+            creator=post_data.creator,
+            short_description=post_data.short_description,
+            description=post_data.description,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+
+        try:
+            post_id = await project_service.create_post(post)
+            return {"id": post_id, "message": "Post created successfully"}
+        except project_errors.ProjectNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(e)
+            )
+
+    @router.put("/{project_id}/post/{post_id}", response_model=dict)
+    async def update_post(post_id: UUID, post_data: PostUpdateDTO):
+        try:
+            existing = await project_service.get_post(post_id)
+        except project_errors.PostNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+        post = Post(
+            post_id=post_id,
+            project_id=existing.project_id,
+            label=post_data.label if post_data.label else existing.label,
+            creator=existing.creator,
+            short_description=post_data.short_description if post_data.short_description else existing.short_description,
+            description=post_data.description if post_data.description else existing.description,
+            created_at=existing.created_at,
+            updated_at=datetime.now(timezone.utc)
+        )
+
+        try:
+            await project_service.update_post(post)
+            return {"message": "Post updated successfully"}
+        except project_errors.PostNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+    @router.delete("/{project_id}/post/{post_id}")
+    async def delete_post(post_id: UUID):
+        try:
+            await project_service.delete_post(post_id)
+            return {"message": "Post deleted successfully"}
+        except project_errors.PostNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+    @router.get("/{project_id}/post/{post_id}", response_model=PostDTO)
+    async def get_post(post_id: UUID):
+        try:
+            post = await project_service.get_post(post_id)
+            return PostDTO(
+                post_id=post.post_id,
+                project_id=post.project_id,
+                label=post.label,
+                creator=post.creator,
+                short_description=post.short_description,
+                description=post.description,
+                created_at=post.created_at,
+                updated_at=post.updated_at
+            )
+        except project_errors.PostNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
+    @router.post("/{project_id}/member")
+    async def add_member(project_id: UUID, user_data: DenormUserDTO):
+        try:
+            await project_service.add_member(project_id, user_data.user_id)
+            return {"message": "Member added successfully"}
+        except project_errors.ProjectNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+        except project_errors.UserAlreadyExistsError as e:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(e)
+            )
+
+    @router.delete("/{project_id}/member/{user_id}")
+    async def remove_member(project_id: UUID, user_id: UUID):
+        try:
+            await project_service.remove_member(project_id, user_id)
+            return {"message": "Member removed successfully"}
+        except project_errors.ProjectNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+        except project_errors.UserNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+
     return router
