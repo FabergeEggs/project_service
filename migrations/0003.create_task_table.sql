@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS
         creator VARCHAR(255) NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        status task_status NOT NULL
+        status task_status NOT NULL,
+        answer_count INTEGER NOT NULL DEFAULT 0
     )

@@ -3,6 +3,7 @@ from src.services.protocols import ProjectRepository, ProjectKafkaProducer
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
 from uuid import UUID, uuid4
+from loguru import logger
 
 
 class ProjectService():
@@ -86,6 +87,18 @@ class ProjectService():
         except adapter_errors.TaskNotFoundError:
             raise project_errors.TaskNotFoundError(
                 "Couldn't find task by given ID")
+
+    async def increment_task_answer(self, id: UUID) -> None:
+        try:
+            await self._project_repository.increment_task_answer(id)
+        except adapter_errors.TaskNotFoundError:
+            logger.warning(f"Task with id {id} doesn't exist")
+
+    async def decrement_task_answer(self, id: UUID) -> None:
+        try:
+            await self._project_repository.decrement_task_answer(id)
+        except adapter_errors.TaskNotFoundError:
+            logger.warning(f"Task with id {id} doesn't exist")
 
     async def create_post(self, post: Post) -> UUID:
         post.id = uuid4()

@@ -338,6 +338,46 @@ class ProjectPostgresRepository:
 
     async def get_project_tasks(self, id: UUID) -> list[Task]: ...
 
+    async def increment_task_answer(self, id: UUID) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                result = await conn.execute(
+                    """
+                        UPDATE task
+                        SET answer_count = answer_count + 1,
+                            updated_at = NOW()
+                        WHERE id = %s AND status != 'DELETED'
+                        RETURNING id
+                        """,
+                    (id,)
+                )
+
+                updated_id = await result.fetchone()
+                if not updated_id:
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {id} doesn't exist"
+                    )
+
+    async def decrement_task_answer(self, id: UUID) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                result = await conn.execute(
+                    """
+                        UPDATE task
+                        SET answer_count = answer_count - 1,
+                            updated_at = NOW()
+                        WHERE id = %s AND status != 'DELETED' AND answer_count > 0
+                        RETURNING id
+                        """,
+                    (id,)
+                )
+
+                updated_id = await result.fetchone()
+                if not updated_id:
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {id} doesn't exist"
+                    )
+
     async def create_post(self, post: Post) -> UUID:
         async with self._pool.connection() as conn:
             async with conn.transaction():

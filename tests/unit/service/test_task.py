@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
 from datetime import datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -118,3 +118,92 @@ class TestGetProjectTasks:
 
         with pytest.raises(project_errors.TaskNotFoundError):
             await service.get_project_tasks(project_id)
+
+
+@pytest.mark.unit
+class TestUpdateTaskAnswers:
+    @pytest.mark.asyncio
+    async def test_answer_incrementation(self, service, repo):
+        task = make_task()
+
+        await service.increment_task_answer(task.task_id)
+
+        repo.increment_task_answer.assert_awaited_once_with(task.task_id)
+
+    @pytest.mark.asyncio
+    async def test_answer_incrementation_not_found(self, service, repo):
+        task_id = uuid4()
+
+        repo.increment_task_answer.side_effect = adapter_errors.TaskNotFoundError(
+            f"Task with id {task_id} doesn't exist"
+        )
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.increment_task_answer(task_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_answer_incrementation_of_deleted(self, service, repo):
+        task_id = make_task(status="DELETED", answers_count=1)
+
+        repo.increment_task_answer.side_effect = adapter_errors.TaskNotFoundError(
+            f"Task with id {task_id} doesn't exist"
+        )
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.increment_task_answer(task_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_answer_decrementation(self, service, repo):
+        task = make_task(answers_count=1)
+
+        await service.decrement_task_answer(task.task_id)
+
+        repo.decrement_task_answer.assert_awaited_once_with(task.task_id)
+
+    @pytest.mark.asyncio
+    async def test_answer_decrementation_not_found(self, service, repo):
+        task_id = uuid4()
+
+        repo.decrement_task_answer.side_effect = adapter_errors.TaskNotFoundError(
+            f"Task with id {task_id} doesn't exist"
+        )
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.decrement_task_answer(task_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_answer_decrementation_of_deleted(self, service, repo):
+        task_id = make_task(status="DELETED", answers_count=1)
+
+        repo.decrement_task_answer.side_effect = adapter_errors.TaskNotFoundError(
+            f"Task with id {task_id} doesn't exist"
+        )
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.decrement_task_answer(task_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_answer_decrementation_of_zero(self, service, repo):
+        task_id = make_task()
+
+        repo.decrement_task_answer.side_effect = adapter_errors.TaskNotFoundError(
+            f"Task with id {task_id} doesn't exist"
+        )
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.decrement_task_answer(task_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]
