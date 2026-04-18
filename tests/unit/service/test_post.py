@@ -20,7 +20,8 @@ def make_post(**kwargs) -> Post:
         creator="test_user",
         short_description="Short post description",
         description="Full detailed post description for testing",
-        created_at=datetime.now()
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
     )
     default.update(kwargs)
     return Post(**default)
@@ -41,20 +42,6 @@ def service(repo, kafka):
     return ProjectService(
         project_repository=repo, kafka_producer=kafka,
     )
-
-
-def make_post(**kwargs) -> Post:
-    default = dict(
-        post_id=uuid4(),
-        project_id=uuid4(),
-        label="Test Post",
-        creator="test_user",
-        short_description="Short post description",
-        description="Full detailed post description for testing",
-        created_at=datetime.now()
-    )
-    default.update(kwargs)
-    return Post(**default)
 
 
 @pytest.fixture

@@ -63,7 +63,7 @@ class TestCreateProject:
         result = await service.create_project(project)
 
         repo.create_project.assert_awaited_once_with(project)
-        kafka.send_create_project.assert_awaited_once_with(project)
+        kafka.send_create_project.assert_called_once_with(project)
         assert result == project.id
 
     @pytest.mark.asyncio

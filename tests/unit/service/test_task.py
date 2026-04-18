@@ -19,6 +19,7 @@ def make_task(**kwargs) -> Task:
         short_description="Short task description",
         description="Full detailed task description for testing",
         created_at=datetime.now(),
+        updated_at=datetime.now(),
         status=TaskStatusEnum.ACTIVE,
         answers_count=0
     )
