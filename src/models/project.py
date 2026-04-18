@@ -52,6 +52,7 @@ class Post:
     short_description: str
     description: str
     created_at: datetime
+    updated_at: datetime
 
 
 @dataclass
@@ -63,6 +64,7 @@ class Task:
     short_description: str
     description: str
     created_at: datetime
+    updated_at: datetime
     status: TaskStatusEnum
     answers_count: int = 0
 

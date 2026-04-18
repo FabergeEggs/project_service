@@ -19,25 +19,26 @@ class TaskDTO(BaseModel):
     short_description: str
     description: str
     created_at: datetime
+    updated_at: datetime
     answers_count: int = 0
     status: TaskStatusEnum
 
 
 class TaskCreateDTO(BaseModel):
     project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
+    label: str = Field(..., min_length=3, max_length=255)
     creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
-    status: TaskStatusEnum = TaskStatusEnum.ACTIVE
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class TaskUpdateDTO(BaseModel):
+    task_id: UUID
     project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
+    label: str = Field(..., min_length=3, max_length=255)
     creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
     status: TaskStatusEnum
 
 
@@ -49,22 +50,23 @@ class PostDTO(BaseModel):
     short_description: str
     description: str
     created_at: datetime
+    updated_at: datetime
 
 
 class PostCreateDTO(BaseModel):
     project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
+    label: str = Field(..., min_length=3, max_length=255)
     creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class PostUpdateDTO(BaseModel):
     project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
+    label: str = Field(..., min_length=3, max_length=255)
     creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class ProjectDTO(BaseModel):
@@ -94,18 +96,18 @@ class ProjectDetailDTO(ProjectDTO):
 
 
 class ProjectCreateDTO(BaseModel):
-    label: str = Field(..., min_length=3, max_length=200)
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
     tags: list[str]
     creator: str
     status: ProjectStatusEnum = ProjectStatusEnum.ACTIVE
 
 
 class ProjectUpdateDTO(BaseModel):
-    label: str = Field(..., min_length=3, max_length=200)
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
     tags: list[str]
     status: ProjectStatusEnum
 

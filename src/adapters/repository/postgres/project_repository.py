@@ -63,10 +63,6 @@ class ProjectPostgresRepository:
                     raise adapter_errors.ProjectAlreadyExistsError(
                         f"Project with id {project_id} already exists"
                     ) from e
-                except psycopg_errors.ForeignKeyViolation as e:
-                    raise adapter_errors.UserNotFoundError(
-                        f"Creator with id {project.creator} not found"
-                    ) from e
 
                 if project.tags:
                     for tag in project.tags:
@@ -271,19 +267,166 @@ class ProjectPostgresRepository:
 
             return projects
 
-    async def create_task(self, task: Task) -> UUID: ...
-    async def update_task(self, task: Task) -> None: ...
+    async def create_task(self, task: Task) -> UUID:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                task_id = task.task_id or uuid4()
+                now = datetime.now(timezone.utc)
+
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO task (
+                            id, project_id, label, creator,
+                            short_description, description,
+                            created_at, updated_at,
+                            answer_count, status
+                        ) VALUES (%s %s %s %s %s %s %s %s)
+                        """,
+                        (
+                            task_id,
+                            task.project_id,
+                            task.label,
+                            task.creator,
+                            task.short_description,
+                            task.description,
+                            task.created_at or now,
+                            task.updated_at or now,
+                            task.answers_count or 0,
+                            task.status.value
+                        )
+                    )
+                except psycopg_errors.UniqueViolation as e:
+                    raise adapter_errors.TaskAlreadyExistsError(
+                        f"Task with id {task_id} already exists"
+                    ) from e
+
+                return task_id
+
+    async def update_task(self, task: Task) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                task_id = task.task_id
+                now = datetime.now(timezone.utc)
+
+                result = await conn.execute(
+                    """
+                        UPDATE task
+                        SET project_id = %s, label = %s, creator = %s,
+                            short_description = %s, description = %s,
+                            updated_at = %s, status = %s
+                        WHERE id = %s
+                        RETURNING id
+                        """,
+                    (
+                        task.project_id,
+                        task.label,
+                        task.creator,
+                        task.short_description,
+                        task.description,
+                        task.updated_at or now,
+                        task.status.value,
+                        task_id,
+                    )
+                )
+
+                row = await result.fetchone()
+                if not row:
+                    raise adapter_errors.TaskNotFoundError(
+                        f"Task with id {task_id} not found"
+                    )
+
     async def get_project_tasks(self, id: UUID) -> list[Task]: ...
 
-    async def create_post(self, post: Post) -> UUID: ...
-    async def update_post(self, post: Post) -> None: ...
-    async def delete_post(self, id: UUID) -> None: ...
+    async def create_post(self, post: Post) -> UUID:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                post_id = post.post_id or uuid4()
+                now = datetime.now(timezone.utc)
+
+                try:
+                    await conn.execute(
+                        """
+                        INSERTN INTO post (
+                            id, project_id, label, creator,
+                            short_description, description,
+                            created_at, updated_at
+                        ) VALUE
+                        """,
+                        (
+                            post_id,
+                            post.project_id,
+                            post.label,
+                            post.creator,
+                            post.short_description,
+                            post.description,
+                            post.created_at or now,
+                            post.updated_at or now
+                        )
+                    )
+                except psycopg_errors.UniqueViolation as e:
+                    raise adapter_errors.PostAlreadyExistsError(
+                        f"Post with id {post_id} already exists"
+                    ) from e
+
+                return post_id
+
+    async def update_post(self, post: Post) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                post_id = post.post_id
+                now = datetime.now(timezone.utc)
+
+                result = await conn.execute(
+                    """
+                        UPDATE post
+                        SET project_id = %s, label = %s, creator = %s,
+                            short_description = %s, description = %s,
+                            updated_at = %s
+                        WHERE id = %s
+                        RETURNING id
+                        """,
+                    (
+                        post.project_id,
+                        post.label,
+                        post.creator,
+                        post.short_description,
+                        post.description,
+                        post.updated_at or now,
+                        post_id,
+                    )
+                )
+
+                row = await result.fetchone()
+                if not row:
+                    raise adapter_errors.TaskNotFoundError(
+                        f"Task with id {post_id} not found"
+                    )
+
+    async def delete_post(self, id: UUID) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+
+                result = await conn.execute(
+                    """
+                        DELETE FROM post
+                        WHERE id = %s
+                        RETURNING id
+                        """,
+                    (id,)
+                )
+
+                delete_id = result.fetchone()
+                if not delete_id:
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {id} doesn't exist"
+                    )
+
     async def get_project_posts(self, id: UUID) -> list[Post]: ...
 
     async def get_user_memberships(
             self, user_id: UUID) -> list[list[UUID]]:
         async with self._pool.connection() as conn:
-            # Получаем все проекты пользователя с его ролями
             result = await conn.execute(
                 """
                 SELECT
