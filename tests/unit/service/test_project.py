@@ -1,11 +1,10 @@
 from uuid import UUID, uuid4
 from datetime import datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from src.models.project import Project, Tag, ProjectStatusEnum
-
 from src.services.project_service import ProjectService
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
@@ -15,6 +14,7 @@ def make_project(**kwargs) -> Project:
     default = dict(
         id=uuid4(),
         label="Test Project",
+        creator_id=uuid4(),
         creator="test_user",
         short_description="Short test description",
         description="Full detailed description for testing purposes",
@@ -80,16 +80,34 @@ class TestUpdateProject:
     @pytest.mark.asyncio
     async def test_update_project(self, service, repo, kafka):
         project = make_project()
+        repo.get_project_info.return_value = project
 
         await service.update_project(project)
 
+        repo.get_project_info.assert_awaited_once_with(project.id)
         repo.update_project.assert_awaited_once_with(project)
         kafka.send_update_project.assert_called_once_with(project)
 
     @pytest.mark.asyncio
+    async def test_update_project_deleted(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.DELETED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service.update_project(project)
+
+    @pytest.mark.asyncio
+    async def test_update_project_finished(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.FINISHED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectFinishedError):
+            await service.update_project(project)
+
+    @pytest.mark.asyncio
     async def test_update_project_not_found(self, service, repo):
         project = make_project()
-        repo.update_project.side_effect = adapter_errors.ProjectNotFoundError
+        repo.get_project_info.side_effect = adapter_errors.ProjectNotFoundError
 
         with pytest.raises(project_errors.ProjectNotFoundError):
             await service.update_project(project)
@@ -108,6 +126,14 @@ class TestGetProjectInfo:
         assert result == project
 
     @pytest.mark.asyncio
+    async def test_get_project_info_deleted(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.DELETED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service.get_project_info(project.id)
+
+    @pytest.mark.asyncio
     async def test_get_project_info_not_found(self, service, repo):
         project_id = uuid4()
         repo.get_project_info.side_effect = adapter_errors.ProjectNotFoundError
@@ -121,18 +147,31 @@ class TestGetProjectStatistics:
     @pytest.mark.asyncio
     async def test_get_project_statistics(self, service, repo):
         project_id = uuid4()
-        statistics = [10, 5, 3]
+        project = make_project(id=project_id)
+        statistics = {"project_id": str(
+            project_id), "tasks_count": 5, "members_count": 3, "answers_count": 10}
+        repo.get_project_info.return_value = project
         repo.get_project_statistics.return_value = statistics
 
         result = await service.get_project_statistics(project_id)
 
+        repo.get_project_info.assert_awaited_once_with(project_id)
         repo.get_project_statistics.assert_awaited_once_with(project_id)
         assert result == statistics
 
     @pytest.mark.asyncio
+    async def test_get_project_statistics_deleted(self, service, repo):
+        project_id = uuid4()
+        project = make_project(id=project_id, status=ProjectStatusEnum.DELETED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service.get_project_statistics(project_id)
+
+    @pytest.mark.asyncio
     async def test_get_project_statistics_not_found(self, service, repo):
         project_id = uuid4()
-        repo.get_project_statistics.side_effect = adapter_errors.ProjectNotFoundError
+        repo.get_project_info.side_effect = adapter_errors.ProjectNotFoundError
 
         with pytest.raises(project_errors.ProjectNotFoundError):
             await service.get_project_statistics(project_id)
@@ -151,6 +190,16 @@ class TestGetProjects:
 
         repo.get_projects.assert_awaited_once_with(ids)
         assert result == [project1, project2]
+
+    @pytest.mark.asyncio
+    async def test_get_projects_with_deleted(self, service, repo):
+        project1 = make_project()
+        project2 = make_project(status=ProjectStatusEnum.DELETED)
+        repo.get_projects.return_value = [project1, project2]
+        ids = [project1.id, project2.id]
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service.get_projects(ids)
 
     @pytest.mark.asyncio
     async def test_get_projects_not_found(self, service, repo):

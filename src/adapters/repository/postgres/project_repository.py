@@ -1,7 +1,7 @@
 import psycopg_pool
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
-from src.models.project import Project, Post, Task, DenormUser, Tag, ProjectStatusEnum
+from src.models.project import Project, Post, Task, DenormUser, Tag, ProjectStatusEnum, TaskStatusEnum
 from psycopg import errors as psycopg_errors
 import src.adapters.repository.errors as adapter_errors
 
@@ -335,7 +335,39 @@ class ProjectPostgresRepository:
                         f"Task with id {task_id} not found"
                     )
 
-    async def get_task(self, id: UUID) -> Task: ...
+    async def get_task(self, id: UUID) -> Task:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                result = conn.execute(
+                    """
+                    SELECT t.id, t.project_id, t.label, t.creator,
+                    t.short_description, t.description, t.created_at,
+                    t.updated_at, t.status, t.answer_count
+                    FROM task t
+                    WHERE t.id = %s AND t.status != 'DELETED'
+                    """,
+                    (id,)
+                )
+
+                rows = await result.fetchall()
+
+                if not rows:
+                    raise adapter_errors.TaskNotFoundError(
+                        f"Task with id {id} not found"
+                    )
+
+                return Task(
+                    task_id=rows[0][0],
+                    project_id=rows[0][1],
+                    label=rows[0][2],
+                    creator=rows[0][3],
+                    short_description=rows[0][4],
+                    description=rows[0][5],
+                    created_at=rows[0][6],
+                    updated_at=rows[0][7],
+                    status=TaskStatusEnum(rows[0][8]),
+                    answers_count=rows[0][9]
+                )
 
     async def increment_task_answer(self, id: UUID) -> None:
         async with self._pool.connection() as conn:
@@ -461,7 +493,37 @@ class ProjectPostgresRepository:
                         f"Post with id {id} doesn't exist"
                     )
 
-    async def get_posts(self, id: UUID) -> Post: ...
+    async def get_post(self, id: UUID) -> Post:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                result = conn.execute(
+                    """
+                    SELECT t.id, t.project_id, t.label, t.creator,
+                    t.short_description, t.description,
+                    t.created_at, t.updated_at
+                    FROM post t
+                    WHERE t.id = %s
+                    """,
+                    (id,)
+                )
+
+                rows = await result.fetchall()
+
+                if not rows:
+                    raise adapter_errors.TaskNotFoundError(
+                        f"Task with id {id} not found"
+                    )
+
+                return Task(
+                    task_id=rows[0][0],
+                    project_id=rows[0][1],
+                    label=rows[0][2],
+                    creator=rows[0][3],
+                    short_description=rows[0][4],
+                    description=rows[0][5],
+                    created_at=rows[0][6],
+                    updated_at=rows[0][7]
+                )
 
     async def get_user_memberships(
             self, user_id: UUID) -> list[list[UUID]]:

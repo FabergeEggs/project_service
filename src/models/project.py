@@ -11,6 +11,7 @@ class ProjectStatusEnum(str, Enum):
     DELETED = "DELETED"
 
 
+# !!! DELETED should be deleted
 class TaskStatusEnum(str, Enum):
     ACTIVE = "ACTIVE"
     FINISHED = "FINISHED"
@@ -34,6 +35,7 @@ class Tag:
 class Project:
     id: UUID
     label: str
+    creator_id: UUID
     creator: str
     short_description: str
     description: str
@@ -47,6 +49,7 @@ class Project:
 class Post:
     post_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     short_description: str
@@ -59,6 +62,7 @@ class Post:
 class Task:
     task_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     short_description: str

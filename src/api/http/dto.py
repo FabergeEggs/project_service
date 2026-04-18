@@ -14,6 +14,7 @@ class TagDTO(BaseModel):
 class TaskDTO(BaseModel):
     task_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     short_description: str
@@ -27,7 +28,6 @@ class TaskDTO(BaseModel):
 class TaskCreateDTO(BaseModel):
     project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
-    creator: str
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
 
@@ -44,6 +44,7 @@ class TaskUpdateDTO(BaseModel):
 class PostDTO(BaseModel):
     post_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     short_description: str
@@ -55,7 +56,6 @@ class PostDTO(BaseModel):
 class PostCreateDTO(BaseModel):
     project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
-    creator: str
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
 
@@ -70,6 +70,7 @@ class PostUpdateDTO(BaseModel):
 class ProjectDTO(BaseModel):
     id: UUID
     label: str
+    creator_id: UUID
     creator: str
     short_description: str
     description: str
@@ -98,7 +99,6 @@ class ProjectCreateDTO(BaseModel):
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
     tags: list[str]
-    creator: str
     status: ProjectStatusEnum = ProjectStatusEnum.ACTIVE
 
 
