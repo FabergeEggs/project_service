@@ -6,6 +6,7 @@ import uvicorn
 import sys
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from src.api.http.project_router import create_project_router
 from src.adapters.clients.kafka_producer import KafkaProducerClient
@@ -18,14 +19,15 @@ from migrations.migrate import up, down, drop
 
 
 async def _run(settings: Settings) -> None:
-    # Connecting database interconnection implementation with Duck Typing
     logger.debug("Connecting to database: {}", settings.database_dsn)
 
     pool = AsyncConnectionPool(
         conninfo=settings.database_dsn,
         min_size=settings.database_min_connections,
         max_size=settings.database_max_connections,
+        open=False,
     )
+    await pool.open()
 
     try:
         async with pool.connection() as conn:
@@ -36,25 +38,29 @@ async def _run(settings: Settings) -> None:
     project_repository = ProjectPostgresRepository(pool)
     logger.debug("Database connection established")
 
-    # Starting Kafka producer
     logger.debug("Starting Kafka producer: {}", settings.kafka_bootstrap)
     producer = AIOKafkaProducer(bootstrap_servers=settings.kafka_bootstrap)
     await producer.start()
     kafka_producer = KafkaProducerClient(producer)
     logger.debug("Kafka producer started")
 
-    # Starting service itself with prepared submodules
-    project_service = ProjectService(
-        project_repository, kafka_producer)
+    project_service = ProjectService(project_repository, kafka_producer)
     logger.debug("Project Service started")
 
-    # Start Fastapi app and make it able to use all endpoints
     fastapi_app = FastAPI(title="Project Service")
+
+    fastapi_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:3000"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     router = create_project_router(project_service)
     fastapi_app.include_router(router)
     logger.debug("HTTP router registered")
 
-    # Create kafka consumer to receive messages from other services
     consumer = AIOKafkaConsumer(
         settings.kafka_topic_commands,
         bootstrap_servers=settings.kafka_bootstrap,
@@ -67,15 +73,13 @@ async def _run(settings: Settings) -> None:
         settings.kafka_group_id,
     )
 
-    # Starting service of assembled app with prepared parameters using uvicorn
     config = uvicorn.Config(
         fastapi_app,
         host=settings.http_host,
         port=settings.http_port
     )
     server = uvicorn.Server(config)
-    logger.info("Starting service on {}:{}",
-                settings.http_host, settings.http_port)
+    logger.info("Starting service on {}:{}", settings.http_host, settings.http_port)
 
     try:
         await asyncio.gather(server.serve(), kafka_consumer.start())
@@ -103,6 +107,10 @@ def run() -> None:
     settings = Settings()
     _setup_logger(settings)
     logger.debug("Settings loaded: {}", settings.model_dump())
+
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     asyncio.run(_run(settings))
 
 
