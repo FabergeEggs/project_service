@@ -12,7 +12,7 @@ services:
             - --check=false
         ports:
             - "9093:9092" # Kafka API
-            - "9644:9644" # Admin API
+            - "9645:9644" # Admin API
         volumes:
             - redpanda_data:/var/lib/redpanda/data
 
