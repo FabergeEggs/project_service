@@ -11,7 +11,7 @@ services:
             - --reserve-memory 0M
             - --check=false
         ports:
-            - "9092:9092" # Kafka API
+            - "9093:9092" # Kafka API
             - "9644:9644" # Admin API
         volumes:
             - redpanda_data:/var/lib/redpanda/data

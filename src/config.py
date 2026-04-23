@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     database_max_connections: int = Field(
         default=10, alias="DATABASE_MAX_CONNECTIONS")
     kafka_bootstrap: str = Field(
-        default="localhost:9092", alias="KAFKA_BOOTSTRAP")
+        default="localhost:9093", alias="KAFKA_BOOTSTRAP")
     kafka_topic_commands: str = Field(
         default="project-commands", alias="KAFKA_TOPIC_COMMANDS"
     )
