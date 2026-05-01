@@ -27,18 +27,19 @@ class TaskDTO(BaseModel):
 
 class TaskCreateDTO(BaseModel):
     project_id: UUID
+    creator_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
 
 
 class TaskUpdateDTO(BaseModel):
-    task_id: Optional[UUID] = None
-    project_id: Optional[UUID] = None
-    label: Optional[str] = Field(None, min_length=3, max_length=255)
-    short_description: Optional[str] = Field(None, max_length=500)
-    description: Optional[str] = Field(None, max_length=5000)
-    status: Optional[TaskStatusEnum] = None
+    task_id: UUID
+    project_id: UUID
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
+    status: TaskStatusEnum = Field(...)
 
 
 class PostDTO(BaseModel):
@@ -55,16 +56,18 @@ class PostDTO(BaseModel):
 
 class PostCreateDTO(BaseModel):
     project_id: UUID
+    creator_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
 
 
 class PostUpdateDTO(BaseModel):
-    project_id: Optional[UUID]
-    label: Optional[str] = Field(None, min_length=3, max_length=255)
-    short_description: Optional[str] = Field(None, max_length=500)
-    description: Optional[str] = Field(None, max_length=5000)
+    post_id: UUID
+    project_id: UUID
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class ProjectDTO(BaseModel):
@@ -81,7 +84,8 @@ class ProjectDTO(BaseModel):
 
 
 class ProjectInfoDTO(BaseModel):
-    id: UUID
+    project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     description: str
@@ -95,6 +99,7 @@ class ProjectDetailDTO(ProjectDTO):
 
 
 class ProjectCreateDTO(BaseModel):
+    creator_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -103,6 +108,7 @@ class ProjectCreateDTO(BaseModel):
 
 
 class ProjectUpdateDTO(BaseModel):
+    project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -115,10 +121,3 @@ class ProjectStatsDTO(BaseModel):
     tasks_count: int
     participants_count: int
     answers_count: int
-
-
-class DenormUserDTO(BaseModel):
-    id: UUID
-    name: str
-    role: ProjectRoleEnum
-    avatar_link: str
