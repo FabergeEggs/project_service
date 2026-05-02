@@ -16,8 +16,11 @@ class Settings(BaseSettings):
         default=10, alias="DATABASE_MAX_CONNECTIONS")
     kafka_bootstrap: str = Field(
         default="localhost:9092", alias="KAFKA_BOOTSTRAP")
-    kafka_topic_commands: str = Field(
-        default="project-commands", alias="KAFKA_TOPIC_COMMANDS"
+    kafka_topic_answers: str = Field(
+        default="project-answers", alias="KAFKA_TOPIC_ANSWERS"
+    )
+    kafka_topic_profile: str = Field(
+        default="project-profile", alias="KAFKA_TOPIC_PROFILE"
     )
     kafka_topic_events: str = Field(
         default="project-events", alias="KAFKA_TOPIC_EVENTS")

@@ -3,26 +3,16 @@ import asyncio
 from uuid import UUID
 from aiokafka import AIOKafkaConsumer
 from src.services.project_service import ProjectService
+from src.api.kafka.consumers.base_consumer import BaseKafkaConsumer
 from loguru import logger
 
 
-class ProjectKafkaConsumer:
+class AnswerKafkaConsumer(BaseKafkaConsumer):
     def __init__(
         self, consumer: AIOKafkaConsumer, project_service: ProjectService
     ) -> None:
-        self._consumer = consumer
+        super().__init__(consumer)
         self._project_service = project_service
-
-    async def start(self) -> None:
-        await self._consumer.start()
-        logger.info("Kafka consumer started")
-        try:
-            async for message in self._consumer:
-                await self._handle_message(message)
-        except asyncio.CancelledError:
-            logger.info("Answers Kafka consumer stopped")
-        finally:
-            await self._consumer.stop()
 
     async def _handle_message(self, message):
         try:

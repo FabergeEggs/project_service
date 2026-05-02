@@ -10,7 +10,8 @@ from loguru import logger
 from src.api.http.project_router import create_project_router
 from src.adapters.clients.kafka_producer import KafkaProducerClient
 from src.adapters.repository.postgres.project_repository import ProjectPostgresRepository
-from src.api.kafka.project_consumer import ProjectKafkaConsumer
+from shara.faberge.project_service.src.api.kafka.answer_consumer import AnswerKafkaConsumer
+from shara.faberge.project_service.src.api.kafka.profile_consumer import ProfileKafkaConsumer
 from src.services.project_service import ProjectService
 from src.config import Settings
 
@@ -54,16 +55,30 @@ async def _run(settings: Settings) -> None:
     fastapi_app.include_router(router)
     logger.debug("HTTP router registered")
 
-    # Create kafka consumer to receive messages from other services
-    consumer = AIOKafkaConsumer(
-        settings.kafka_topic_commands,
+    # Create kafka consumers to receive messages from other services
+    answer_consumer = AIOKafkaConsumer(
+        settings.kafka_topic_answers,
         bootstrap_servers=settings.kafka_bootstrap,
-        group_id=settings.kafka_group_id,
+        group_id=f"{settings.kafka_group_id}-answer",
     )
-    kafka_consumer = ProjectKafkaConsumer(consumer, project_service)
+    answer_kafka_consumer = AnswerKafkaConsumer(
+        answer_consumer, project_service)
     logger.debug(
-        "Kafka consumer created: topic={}, group={}",
-        settings.kafka_topic_commands,
+        "Answer Kafka consumer created: topic={}, group={}",
+        settings.kafka_topic_answers,
+        settings.kafka_group_id,
+    )
+
+    profile_consumer = AIOKafkaConsumer(
+        settings.kafka_topic_profile,
+        bootstrap_servers=settings.kafka_bootstrap,
+        group_id=f"{settings.kafka_group_id}-profile",
+    )
+    profile_kafka_consumer = ProfileKafkaConsumer(
+        profile_consumer, project_service)
+    logger.debug(
+        "Profile Kafka consumer created: topic={}, group={}",
+        settings.kafka_topic_profile,
         settings.kafka_group_id,
     )
 
@@ -78,7 +93,11 @@ async def _run(settings: Settings) -> None:
                 settings.http_host, settings.http_port)
 
     try:
-        await asyncio.gather(server.serve(), kafka_consumer.start())
+        await asyncio.gather(
+            server.serve(),
+            answer_kafka_consumer.start(),
+            profile_kafka_consumer.start(),
+        )
     finally:
         logger.debug("Shutting down")
         await producer.stop()
