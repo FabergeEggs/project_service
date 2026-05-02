@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 from datetime import datetime
 from src.models.project import ProjectRoleEnum, ProjectStatusEnum, TaskStatusEnum
 
@@ -121,3 +121,17 @@ class ProjectStatsDTO(BaseModel):
     tasks_count: int
     participants_count: int
     answers_count: int
+
+
+class PublicationDTO(BaseModel):
+    id: UUID
+    project_id: UUID
+    label: str
+    short_description: str
+    created_at: datetime
+    creator_id: UUID
+    creator_name: str
+    type: Literal["post", "task"]
+
+    status: Optional[TaskStatusEnum] = None
+    answers_count: Optional[int] = None

@@ -4,6 +4,8 @@ import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
 from uuid import UUID, uuid4
 from loguru import logger
+from typing import Optional
+from datetime import datetime
 
 
 class ProjectService():
@@ -244,3 +246,18 @@ class ProjectService():
         except adapter_errors.UserNotFoundError:
             raise project_errors.UserNotFoundError(
                 "Couldn't find user by given ID")
+
+    async def get_publications(
+        self,
+        project_id: UUID,
+        limit: int = 20,
+        cursor: Optional[datetime] = None
+    ) -> list[dict]:
+        await self._check_project_accessible(project_id)
+
+        try:
+            publications = await self._project_repository.get_project_publications(project_id, limit, cursor)
+            return publications
+        except adapter_errors.ProjectNotFoundError:
+            raise project_errors.ProjectNotFoundError(
+                "Couldn't find project by given ID")

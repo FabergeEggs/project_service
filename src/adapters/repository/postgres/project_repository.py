@@ -1,3 +1,4 @@
+from typing import Optional
 import psycopg_pool
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
@@ -558,5 +559,83 @@ class ProjectPostgresRepository:
 
             return [scientist_projects, volunteer_projects]
 
-    async def add_member(self, project_id: UUID, user: DenormUser) -> None: ...
-    async def remove_member(self, id: UUID) -> None: ...
+    async def add_member(self, project_id: UUID, user: DenormUser) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO project_user_connection (project_id, user_id, role)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (project_id, user_id) DO UPDATE
+                    SET role = EXCLUDED.role
+                    """,
+                    (project_id, user.id, user.role)
+                )
+
+    async def remove_member(self, id: UUID) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    DELETE FROM project_user_connection
+                    WHERE id = %s
+                    """,
+                    (id,)
+                )
+
+    async def get_publications(
+        self,
+        project_id: UUID,
+        limit: int = 20,
+        cursor: Optional[datetime] = None
+    ) -> list[dict]:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                rows = await conn.fetch(
+                    """
+                    (
+                        SELECT
+                            p.id,
+                            p.project_id,
+                            p.label,
+                            p.short_description,
+                            p.created_at,
+                            p.creator_id,
+                            du.name as creator_name,
+                            'post' as type,
+                            NULL as status,
+                            NULL as answers_count
+                        FROM post p
+                        LEFT JOIN denorm_user du ON du.id = p.creator_id
+                        WHERE p.project_id = %s
+                            AND (%s::timestamptz IS NULL OR p.created_at < %s)
+                    )
+                    UNION ALL
+                    (
+                        SELECT
+                            t.id,
+                            t.project_id,
+                            t.label,
+                            t.short_description,
+                            t.created_at,
+                            t.creator_id,
+                            du.name as creator_name,
+                            'task' as type,
+                            t.status as status,
+                            t.answers_count as answers_count
+                        FROM task t
+                        LEFT JOIN denorm_user du ON du.id = t.creator_id
+                        WHERE t.project_id = %s
+                            AND (%s::timestamptz IS NULL OR t.created_at < %s)
+                    )
+                    ORDER BY created_at DESC
+                    LIMIT %s
+                    """,
+                    (
+                        project_id, cursor, cursor,
+                        project_id, cursor, cursor,
+                        limit
+                    )
+                )
+
+                return [dict(row) for row in rows]

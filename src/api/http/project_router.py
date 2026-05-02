@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from uuid import UUID
-from typing import List
+from typing import Optional
 from datetime import datetime, timezone
 
 from src.services.project_service import ProjectService
@@ -12,7 +12,7 @@ from src.models.project import (
 from src.api.http.dto import (
     ProjectDTO, ProjectInfoDTO, ProjectDetailDTO, ProjectCreateDTO, ProjectUpdateDTO,
     ProjectStatsDTO, TaskDTO, TaskCreateDTO, TaskUpdateDTO,
-    PostDTO, PostCreateDTO, PostUpdateDTO, TagDTO, DenormUserDTO
+    PostDTO, PostCreateDTO, PostUpdateDTO, TagDTO, DenormUserDTO, PublicationDTO
 )
 import src.services.errors as project_errors
 
@@ -145,8 +145,8 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    @router.post("/batch", response_model=List[ProjectDTO])
-    async def get_projects(project_ids: List[UUID]):
+    @router.post("/batch", response_model=list[ProjectDTO])
+    async def get_projects(project_ids: list[UUID]):
         try:
             projects = await project_service.get_projects(project_ids)
             return [
@@ -530,6 +530,39 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         except project_errors.ProjectFinishedError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+            )
+
+    @router.get("/{project_id}/publications", response_model=list[PublicationDTO])
+    async def get_publications(
+        project_id: UUID,
+        limit: int = 20,
+        cursor: Optional[str] = None
+    ):
+        try:
+            cursor_date = None
+            if cursor:
+                cursor_date = datetime.fromisoformat(cursor)
+
+            publications = await project_service.get_publications(
+                project_id, limit, cursor_date
+            )
+
+            next_cursor = None
+            if publications and len(publications) == limit:
+                next_cursor = publications[-1]["created_at"].isoformat()
+
+            return {
+                "items": publications,
+                "next_cursor": next_cursor,
+                "has_more": len(publications) == limit
+            }
+        except project_errors.ProjectNotFoundError as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+            )
+        except project_errors.ProjectDeletedError as e:
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE, detail=str(e)
             )
 
     return router

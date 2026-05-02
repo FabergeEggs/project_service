@@ -1,6 +1,7 @@
 from typing import Protocol
 from src.models.project import Project, Post, Task, Tag, DenormUser
 from uuid import UUID
+from typing import Union
 
 
 class ProjectRepository(Protocol):
@@ -27,6 +28,8 @@ class ProjectRepository(Protocol):
 
     async def add_member(self, project_id: UUID, user: DenormUser) -> None: ...
     async def remove_member(self, id: UUID) -> None: ...
+    async def get_publications(
+        self, project_id: UUID) -> list[Union[Post, Task, None]]: ...
 
 
 class ProjectKafkaProducer(Protocol):
