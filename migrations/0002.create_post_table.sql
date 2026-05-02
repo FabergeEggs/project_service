@@ -12,4 +12,6 @@ CREATE TABLE IF NOT EXISTS
         FOREIGN KEY (creator_id) REFERENCES denorm_user (id) ON DELETE RESTRICT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
+    );
+
+CREATE INDEX IF NOT EXISTS idx_post_project_id ON post (project_id);

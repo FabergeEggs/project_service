@@ -13,3 +13,5 @@ CREATE TABLE IF NOT EXISTS
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+CREATE INDEX IF NOT EXISTS idx_project_creator_id ON project (creator_id);
