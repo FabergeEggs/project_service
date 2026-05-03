@@ -341,6 +341,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             creator=post_data.creator,
             short_description=post_data.short_description,
             description=post_data.description,
+            comments_count=0,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
         )
@@ -387,6 +388,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             creator=existing.creator,
             short_description=post_data.short_description if post_data.short_description else existing.short_description,
             description=post_data.description if post_data.description else existing.description,
+            comments_count=existing.comments_count,
             created_at=existing.created_at,
             updated_at=datetime.now(timezone.utc)
         )
@@ -452,6 +454,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 creator=post.creator,
                 short_description=post.short_description,
                 description=post.description,
+                comments_count=post.comments_count,
                 created_at=post.created_at,
                 updated_at=post.updated_at
             )

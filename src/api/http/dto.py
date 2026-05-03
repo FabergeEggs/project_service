@@ -50,6 +50,7 @@ class PostDTO(BaseModel):
     creator: str
     short_description: str
     description: str
+    comments_count: int
     created_at: datetime
     updated_at: datetime
 
@@ -132,6 +133,6 @@ class PublicationDTO(BaseModel):
     creator_id: UUID
     creator_name: str
     type: Literal["post", "task"]
+    answers_count: int
 
     status: Optional[TaskStatusEnum] = None
-    answers_count: Optional[int] = None

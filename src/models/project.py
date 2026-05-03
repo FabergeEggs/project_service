@@ -54,6 +54,7 @@ class Post:
     creator: str
     short_description: str
     description: str
+    comments_count: int
     created_at: datetime
     updated_at: datetime
 

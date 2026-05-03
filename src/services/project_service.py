@@ -155,6 +155,18 @@ class ProjectService():
         except adapter_errors.TaskNotFoundError:
             logger.warning(f"Task with id {id} doesn't exist")
 
+    async def increment_post_answer(self, id: UUID) -> None:
+        try:
+            await self._project_repository.increment_post_answer(id)
+        except adapter_errors.PostNotFoundError:
+            logger.warning(f"Post with id {id} doesn't exist")
+
+    async def decrement_post_answer(self, id: UUID) -> None:
+        try:
+            await self._project_repository.decrement_post_answer(id)
+        except adapter_errors.PostNotFoundError:
+            logger.warning(f"Post with id {id} doesn't exist")
+
     async def create_post(self, post: Post) -> UUID:
         await self._check_project_active(post.project_id)
 
@@ -204,9 +216,9 @@ class ProjectService():
 
     async def get_post(self, id: UUID) -> Post:
         try:
-            post = await self._project_repository.get_post(id)
-
             await self._check_project_accessible(post.project_id)
+
+            post = await self._project_repository.get_post(id)
 
             return post
         except adapter_errors.PostNotFoundError:

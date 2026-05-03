@@ -370,6 +370,46 @@ class ProjectPostgresRepository:
                     answers_count=rows[0][9]
                 )
 
+    async def increment_post_answer(self, id: UUID) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                result = await conn.execute(
+                    """
+                        UPDATE post
+                        SET comments_count = comments_count + 1,
+                            updated_at = NOW()
+                        WHERE id = %s
+                        RETURNING id
+                        """,
+                    (id,)
+                )
+
+                updated_id = await result.fetchone()
+                if not updated_id:
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {id} doesn't exist"
+                    )
+
+    async def decrement_post_answer(self, id: UUID) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                result = await conn.execute(
+                    """
+                        UPDATE post
+                        SET answer_count = answer_count - 1,
+                            updated_at = NOW()
+                        WHERE id = %s AND answer_count > 0
+                        RETURNING id
+                        """,
+                    (id,)
+                )
+
+                updated_id = await result.fetchone()
+                if not updated_id:
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {id} doesn't exist"
+                    )
+
     async def increment_task_answer(self, id: UUID) -> None:
         async with self._pool.connection() as conn:
             async with conn.transaction():
@@ -387,7 +427,7 @@ class ProjectPostgresRepository:
                 updated_id = await result.fetchone()
                 if not updated_id:
                     raise adapter_errors.PostNotFoundError(
-                        f"Post with id {id} doesn't exist"
+                        f"Task with id {id} doesn't exist"
                     )
 
     async def decrement_task_answer(self, id: UUID) -> None:
@@ -407,7 +447,7 @@ class ProjectPostgresRepository:
                 updated_id = await result.fetchone()
                 if not updated_id:
                     raise adapter_errors.PostNotFoundError(
-                        f"Post with id {id} doesn't exist"
+                        f"Task with id {id} doesn't exist"
                     )
 
     async def create_post(self, post: Post) -> UUID:
@@ -422,7 +462,7 @@ class ProjectPostgresRepository:
                         INSERTN INTO post (
                             id, project_id, label, creator,
                             short_description, description,
-                            created_at, updated_at
+                            comments_count, created_at, updated_at
                         ) VALUE
                         """,
                         (
@@ -432,6 +472,7 @@ class ProjectPostgresRepository:
                             post.creator,
                             post.short_description,
                             post.description,
+                            post.comments_count or 0,
                             post.created_at or now,
                             post.updated_at or now
                         )
@@ -501,7 +542,7 @@ class ProjectPostgresRepository:
                     """
                     SELECT t.id, t.project_id, t.label, t.creator,
                     t.short_description, t.description,
-                    t.created_at, t.updated_at
+                    t.comments_count, t.created_at, t.updated_at
                     FROM post t
                     WHERE t.id = %s
                     """,
@@ -522,8 +563,9 @@ class ProjectPostgresRepository:
                     creator=rows[0][3],
                     short_description=rows[0][4],
                     description=rows[0][5],
-                    created_at=rows[0][6],
-                    updated_at=rows[0][7]
+                    comments_count=rows[0][6],
+                    created_at=rows[0][7],
+                    updated_at=rows[0][8]
                 )
 
     async def get_user_memberships(
@@ -604,7 +646,7 @@ class ProjectPostgresRepository:
                             du.name as creator_name,
                             'post' as type,
                             NULL as status,
-                            NULL as answers_count
+                            p.comments_count as answers_count
                         FROM post p
                         LEFT JOIN denorm_user du ON du.id = p.creator_id
                         WHERE p.project_id = %s
