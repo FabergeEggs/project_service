@@ -707,3 +707,21 @@ class ProjectPostgresRepository:
                 )
 
                 return [dict(row) for row in rows]
+
+    async def upsert_denorm_user(self, user: DenormUser) -> None:
+        async with self._pool.connection() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    INSERT INTO denorm_user (
+                        id,
+                        name,
+                        avatar_url
+                    )
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE
+                    SET name = EXCLUDED.name,
+                        avatar_url = EXCLUDED.avatar_url
+                    """,
+                    (user.id, user.name, user.avatar_url)
+                )
