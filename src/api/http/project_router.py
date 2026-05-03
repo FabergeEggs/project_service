@@ -6,13 +6,14 @@ from datetime import datetime, timezone
 from src.services.project_service import ProjectService
 from src.api.http.dependencies import get_current_user, UserInfo
 from src.models.project import (
-    Project, Post, Task, DenormUser, Tag,
+    Project, Post, Task, Tag,
     ProjectStatusEnum, TaskStatusEnum, ProjectRoleEnum
 )
 from src.api.http.dto import (
     ProjectDTO, ProjectInfoDTO, ProjectDetailDTO, ProjectCreateDTO, ProjectUpdateDTO,
     ProjectStatsDTO, TaskDTO, TaskCreateDTO, TaskUpdateDTO,
-    PostDTO, PostCreateDTO, PostUpdateDTO, TagDTO, DenormUserDTO, PublicationDTO
+    PostDTO, PostCreateDTO, PostUpdateDTO, TagDTO, DenormUserDTO, PublicationDTO,
+    MembershipProjectDTO, MembershipsDTO
 )
 import src.services.errors as project_errors
 
@@ -28,12 +29,11 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
     async def create_project(
         project_data: ProjectCreateDTO,
         current_user: UserInfo = Depends(get_current_user)
-    ):
+    ) -> dict:
         project = Project(
             id=None,
             label=project_data.label,
             creator_id=current_user.user_id,
-            creator=current_user.username,
             short_description=project_data.short_description,
             description=project_data.description,
             tags=[
@@ -56,23 +56,25 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     @router.get("/{project_id}/info", response_model=ProjectDTO)
-    async def get_project_info(project_id: UUID):
+    async def get_project_info(project_id: UUID) -> ProjectInfoDTO:
         try:
             project = await project_service.get_project_info(project_id)
 
-            return ProjectDTO(
-                id=project.id,
-                label=project.label,
-                creator=project.creator,
-                short_description=project.short_description,
-                description=project.description,
+            return ProjectInfoDTO(
+                project_id=project["id"],
+                label=project["label"],
+                creator_id=project["creator_id"],
+                creator=project["creator_name"],
+                description=project["description"],
                 tags=[
-                    TagDTO(tag_id=tag.tag_id, name=tag.name)
-                    for tag in project.tags
+                    TagDTO(
+                        tag_id=tag.tag_id,
+                        name=tag.name
+                    )
+                    for tag in project["tags"]
                 ],
-                created_at=project.created_at,
-                updated_at=project.updated_at,
-                status=project.status
+                created_at=project["created_at"],
+                status=project["status"]
             )
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
@@ -120,7 +122,6 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             id=project_id,
             label=project_data.label,
             creator_id=existing.creator_id,
-            creator=existing.creator,
             short_description=project_data.short_description,
             description=project_data.description,
             tags=[
@@ -206,7 +207,6 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             project_id=project_id,
             label=task_data.label,
             creator_id=current_user.user_id,
-            creator=current_user.username,
             short_description=task_data.short_description,
             description=task_data.description,
             created_at=datetime.now(timezone.utc),
@@ -231,7 +231,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
             )
 
-    @router.patch("/{project_id}/task/{task_id}", response_model=dict)
+    @router.put("/{project_id}/task/{task_id}", response_model=dict)
     async def update_task(
         task_id: UUID,
         task_data: TaskUpdateDTO,
@@ -253,15 +253,13 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         task = Task(
             task_id=task_id,
             project_id=existing.project_id,
-            label=task_data.label if task_data.label else existing.label,
+            label=task_data.label,
             creator_id=existing.creator_id,
-            creator=existing.creator,
-            short_description=task_data.short_description if task_data.short_description else existing.short_description,
-            description=task_data.description if task_data.description else existing.description,
+            short_description=task_data.short_description,
+            description=task_data.description,
             created_at=existing.created_at,
             updated_at=datetime.now(timezone.utc),
-            status=TaskStatusEnum(
-                task_data.status) if task_data.status else existing.status,
+            status=TaskStatusEnum(task_data.status),
             answers_count=existing.answers_count
         )
 
@@ -290,17 +288,17 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         try:
             task = await project_service.get_task(task_id)
             return TaskDTO(
-                task_id=task.task_id,
-                project_id=task.project_id,
-                label=task.label,
-                creator_id=task.creator_id,
-                creator=task.creator,
-                short_description=task.short_description,
-                description=task.description,
-                created_at=task.created_at,
-                updated_at=task.updated_at,
-                status=task.status,
-                answers_count=task.answers_count
+                task_id=task["task_id"],
+                project_id=task["project_id"],
+                label=task["label"],
+                creator_id=task["creator_id"],
+                creator=task["creator"],
+                short_description=task["short_description"],
+                description=task["description"],
+                created_at=task["created_at"],
+                updated_at=task["updated_at"],
+                status=task["status"],
+                answers_count=task["answers_count"]
             )
         except project_errors.TaskNotFoundError as e:
             raise HTTPException(
@@ -338,7 +336,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             post_id=None,
             project_id=project_id,
             label=post_data.label,
-            creator=post_data.creator,
+            creator_id=current_user.user_id,
             short_description=post_data.short_description,
             description=post_data.description,
             comments_count=0,
@@ -384,10 +382,10 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         post = Post(
             post_id=post_id,
             project_id=existing.project_id,
-            label=post_data.label if post_data.label else existing.label,
-            creator=existing.creator,
-            short_description=post_data.short_description if post_data.short_description else existing.short_description,
-            description=post_data.description if post_data.description else existing.description,
+            label=post_data.label,
+            creator_id=existing.creator_id,
+            short_description=post_data.short_description,
+            description=post_data.description,
             comments_count=existing.comments_count,
             created_at=existing.created_at,
             updated_at=datetime.now(timezone.utc)
@@ -448,15 +446,15 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         try:
             post = await project_service.get_post(post_id)
             return PostDTO(
-                post_id=post.post_id,
-                project_id=post.project_id,
-                label=post.label,
-                creator=post.creator,
-                short_description=post.short_description,
-                description=post.description,
-                comments_count=post.comments_count,
-                created_at=post.created_at,
-                updated_at=post.updated_at
+                post_id=post["post_id"],
+                project_id=post["project_id"],
+                label=post["label"],
+                creator=post["creator"],
+                short_description=post["short_description"],
+                description=post["description"],
+                comments_count=post["comments_count"],
+                created_at=post["created_at"],
+                updated_at=post["updated_at"]
             )
         except project_errors.PostNotFoundError as e:
             raise HTTPException(
@@ -508,7 +506,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         project_id: UUID,
         user_id: UUID,
         current_user: UserInfo = Depends(get_current_user)
-    ):
+    ) -> dict:
         if user_id != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -542,30 +540,84 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         cursor: Optional[str] = None
     ):
         try:
+            try:
+                await project_service.get_project_info(project_id)
+            except project_errors.ProjectNotFoundError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+                )
+            except project_errors.ProjectDeletedError as e:
+                raise HTTPException(
+                    status_code=status.HTTP_410_GONE, detail=str(e)
+                )
+
             cursor_date = None
             if cursor:
                 cursor_date = datetime.fromisoformat(cursor)
 
-            publications = await project_service.get_publications(
+            publications_data = await project_service.get_publications(
                 project_id, limit, cursor_date
             )
 
+            publications = []
+            for pub in publications_data:
+                publication_dto = PublicationDTO(
+                    id=pub["id"],
+                    project_id=pub["project_id"],
+                    label=pub["label"],
+                    short_description=pub["short_description"],
+                    created_at=pub["created_at"],
+                    creator_id=pub["creator_id"],
+                    creator_name=pub["creator_name"],
+                    type=pub["type"],
+                    answers_count=pub["answers_count"],
+                    status=pub.get("status")
+                )
+                publications.append(publication_dto)
+
             next_cursor = None
             if publications and len(publications) == limit:
-                next_cursor = publications[-1]["created_at"].isoformat()
+                next_cursor = publications[-1].created_at.isoformat()
 
             return {
                 "items": publications,
                 "next_cursor": next_cursor,
                 "has_more": len(publications) == limit
             }
-        except project_errors.ProjectNotFoundError as e:
+        except Exception as e:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
             )
-        except project_errors.ProjectDeletedError as e:
+
+    @router.get("/profile/{profile_id}", response_model=MembershipsDTO)
+    async def get_user_memberships(profile_id: UUID):
+        try:
+            memberships = await project_service.get_user_memberships(profile_id)
+            return MembershipsDTO(
+                scientist=[
+                    MembershipProjectDTO(
+                        project_id=membership["project_id"],
+                        label=membership["label"],
+                        short_description=membership["short_description"],
+                        created_at=membership["created_at"],
+                        creator_name=membership["creator_name"],
+                        status=membership["status"]
+                    ) for membership in memberships[0]
+                ],
+                volunteer=[
+                    MembershipProjectDTO(
+                        project_id=membership["project_id"],
+                        label=membership["label"],
+                        short_description=membership["short_description"],
+                        created_at=membership["created_at"],
+                        creator_name=membership["creator_name"],
+                        status=membership["status"]
+                    ) for membership in memberships[1]
+                ]
+            )
+        except Exception as e:
             raise HTTPException(
-                status_code=status.HTTP_410_GONE, detail=str(e)
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
             )
 
     return router

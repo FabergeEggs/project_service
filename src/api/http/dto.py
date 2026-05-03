@@ -136,3 +136,17 @@ class PublicationDTO(BaseModel):
     answers_count: int
 
     status: Optional[TaskStatusEnum] = None
+
+
+class MembershipProjectDTO(BaseModel):
+    project_id: UUID
+    label: str
+    short_description: str
+    created_at: datetime
+    status: ProjectStatusEnum
+    creator_name: str
+
+
+class MembershipsDTO(BaseModel):
+    scientist: list[MembershipProjectDTO]
+    volunteer: list[MembershipProjectDTO]

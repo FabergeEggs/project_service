@@ -67,11 +67,11 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
 
-    async def get_project_info(self, id: UUID) -> Project:
+    async def get_project_info(self, id: UUID) -> dict:
         try:
             project = await self._project_repository.get_project_info(id)
 
-            if project.status == ProjectStatusEnum.DELETED:
+            if project["status"] == ProjectStatusEnum.DELETED:
                 raise project_errors.ProjectDeletedError(
                     "Project with given ID is deleted.")
 
@@ -227,7 +227,7 @@ class ProjectService():
 
     async def get_user_memberships(
         self, user_id: UUID
-    ) -> list[list[UUID]]:
+    ) -> list[list[dict]]:
         try:
             memberships = await self._project_repository.get_user_memberships(user_id)
             return memberships

@@ -36,7 +36,6 @@ class Project:
     id: UUID
     label: str
     creator_id: UUID
-    creator: str
     short_description: str
     description: str
     tags: list[Tag]
@@ -51,7 +50,6 @@ class Post:
     project_id: UUID
     creator_id: UUID
     label: str
-    creator: str
     short_description: str
     description: str
     comments_count: int
@@ -65,7 +63,6 @@ class Task:
     project_id: UUID
     creator_id: UUID
     label: str
-    creator: str
     short_description: str
     description: str
     created_at: datetime
