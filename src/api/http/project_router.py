@@ -55,7 +55,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    @router.get("/{project_id}/info", response_model=ProjectDTO)
+    @router.get("/{project_id}/info", response_model=ProjectInfoDTO)
     async def get_project_info(project_id: UUID) -> ProjectInfoDTO:
         try:
             project = await project_service.get_project_info(project_id)
@@ -112,7 +112,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-        if existing.creator_id != current_user.user_id:
+        if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the project creator can update the project"
@@ -121,14 +121,14 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         updated_project = Project(
             id=project_id,
             label=project_data.label,
-            creator_id=existing.creator_id,
+            creator_id=existing["creator_id"],
             short_description=project_data.short_description,
             description=project_data.description,
             tags=[
                 Tag(tag_id=None, name=tag_name)
                 for tag_name in project_data.tags
             ],
-            created_at=existing.created_at,
+            created_at=existing["created_at"],
             updated_at=datetime.now(timezone.utc),
             status=project_data.status
         )
@@ -185,18 +185,18 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-        if existing.creator_id != current_user.user_id:
+        if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the project creator can create tasks"
             )
 
-        if existing.status == ProjectStatusEnum.DELETED:
+        if existing["status"] == ProjectStatusEnum.DELETED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot create tasks for a deleted project"
             )
-        elif existing.status == ProjectStatusEnum.FINISHED:
+        elif existing["status"] == ProjectStatusEnum.FINISHED:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot create tasks for a finished project"
@@ -205,8 +205,8 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         task = Task(
             task_id=None,
             project_id=project_id,
-            label=task_data.label,
             creator_id=current_user.user_id,
+            label=task_data.label,
             short_description=task_data.short_description,
             description=task_data.description,
             created_at=datetime.now(timezone.utc),
@@ -326,7 +326,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
             )
 
-        if existing.creator_id != current_user.user_id:
+        if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the project creator can create posts"
@@ -335,8 +335,8 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         post = Post(
             post_id=None,
             project_id=project_id,
-            label=post_data.label,
             creator_id=current_user.user_id,
+            label=post_data.label,
             short_description=post_data.short_description,
             description=post_data.description,
             comments_count=0,

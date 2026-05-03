@@ -1,9 +1,7 @@
 from uuid import UUID, uuid4
 from datetime import datetime
-from unittest.mock import AsyncMock, patch
-
+from unittest.mock import AsyncMock
 import pytest
-
 from src.models.project import Project, Tag, ProjectStatusEnum
 from src.services.project_service import ProjectService
 import src.services.errors as project_errors
@@ -15,7 +13,6 @@ def make_project(**kwargs) -> Project:
         id=uuid4(),
         label="Test Project",
         creator_id=uuid4(),
-        creator="test_user",
         short_description="Short test description",
         description="Full detailed description for testing purposes",
         tags=[Tag(tag_id=uuid4(), name="test_tag")],
@@ -118,17 +115,38 @@ class TestGetProjectInfo:
     @pytest.mark.asyncio
     async def test_get_project_info(self, service, repo):
         project = make_project()
-        repo.get_project_info.return_value = project
+        repo.get_project_info.return_value = {
+            "id": project.id,
+            "label": project.label,
+            "description": project.description,
+            "creator_id": project.creator_id,
+            "creator_name": "Test Creator",
+            "status": project.status,
+            "created_at": project.created_at,
+            "updated_at": project.updated_at,
+            "tags": []
+        }
 
         result = await service.get_project_info(project.id)
 
         repo.get_project_info.assert_awaited_once_with(project.id)
-        assert result == project
+        assert result["id"] == project.id
+        assert result["status"] == project.status
 
     @pytest.mark.asyncio
     async def test_get_project_info_deleted(self, service, repo):
         project = make_project(status=ProjectStatusEnum.DELETED)
-        repo.get_project_info.return_value = project
+        repo.get_project_info.return_value = {
+            "id": project.id,
+            "label": project.label,
+            "description": project.description,
+            "creator_id": project.creator_id,
+            "creator_name": "Test Creator",
+            "status": ProjectStatusEnum.DELETED,
+            "created_at": project.created_at,
+            "updated_at": project.updated_at,
+            "tags": []
+        }
 
         with pytest.raises(project_errors.ProjectDeletedError):
             await service.get_project_info(project.id)
@@ -208,3 +226,69 @@ class TestGetProjects:
 
         with pytest.raises(project_errors.ProjectNotFoundError):
             await service.get_projects(ids)
+
+
+@pytest.mark.unit
+class TestCheckProjectActive:
+    @pytest.mark.asyncio
+    async def test_check_active_success(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.ACTIVE)
+        repo.get_project_info.return_value = project
+
+        result = await service._check_project_active(project.id)
+
+        assert result == project
+
+    @pytest.mark.asyncio
+    async def test_check_active_deleted(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.DELETED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service._check_project_active(project.id)
+
+    @pytest.mark.asyncio
+    async def test_check_active_finished(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.FINISHED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectFinishedError):
+            await service._check_project_active(project.id)
+
+    @pytest.mark.asyncio
+    async def test_check_active_not_found(self, service, repo):
+        project_id = uuid4()
+        repo.get_project_info.side_effect = adapter_errors.ProjectNotFoundError
+
+        with pytest.raises(project_errors.ProjectNotFoundError):
+            await service._check_project_active(project_id)
+
+
+@pytest.mark.unit
+class TestCheckProjectAccessible:
+    @pytest.mark.asyncio
+    async def test_accessible_success(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.ACTIVE)
+        repo.get_project_info.return_value = project
+
+        result = await service._check_project_accessible(project.id)
+
+        assert result == project
+
+    @pytest.mark.asyncio
+    async def test_accessible_finished_allowed(self, service, repo):
+        """Для доступности finished проект разрешён"""
+        project = make_project(status=ProjectStatusEnum.FINISHED)
+        repo.get_project_info.return_value = project
+
+        result = await service._check_project_accessible(project.id)
+
+        assert result == project
+
+    @pytest.mark.asyncio
+    async def test_accessible_deleted(self, service, repo):
+        project = make_project(status=ProjectStatusEnum.DELETED)
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service._check_project_accessible(project.id)

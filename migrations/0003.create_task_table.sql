@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS
         label VARCHAR(255) NOT NULL,
         short_description VARCHAR(500) NOT NULL,
         description VARCHAR(5000) NOT NULL,
-        creator_id VARCHAR(255) NOT NULL,
+        creator_id UUID NOT NULL,
         FOREIGN KEY (creator_id) REFERENCES denorm_user (id) ON DELETE RESTRICT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

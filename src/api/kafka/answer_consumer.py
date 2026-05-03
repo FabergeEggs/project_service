@@ -27,7 +27,7 @@ class AnswerKafkaConsumer(BaseKafkaConsumer):
             task_id = UUID(task_id_str)
 
             if event_type == "answer.created":
-                await self._project_service.increment_task_answers(task_id)
+                await self._project_service.increment_task_answer(task_id)
             elif event_type == "answer.deleted":
                 await self._project_service.decrement_task_answer(task_id)
             else:

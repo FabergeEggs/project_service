@@ -16,7 +16,6 @@ def make_task(**kwargs) -> Task:
         project_id=uuid4(),
         creator_id=uuid4(),
         label="Test Task",
-        creator="test_user",
         short_description="Short task description",
         description="Full detailed task description for testing",
         created_at=datetime.now(),

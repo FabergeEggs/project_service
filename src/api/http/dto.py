@@ -26,8 +26,6 @@ class TaskDTO(BaseModel):
 
 
 class TaskCreateDTO(BaseModel):
-    project_id: UUID
-    creator_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -56,8 +54,6 @@ class PostDTO(BaseModel):
 
 
 class PostCreateDTO(BaseModel):
-    project_id: UUID
-    creator_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -100,7 +96,6 @@ class ProjectDetailDTO(ProjectDTO):
 
 
 class ProjectCreateDTO(BaseModel):
-    creator_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -109,7 +104,6 @@ class ProjectCreateDTO(BaseModel):
 
 
 class ProjectUpdateDTO(BaseModel):
-    project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -150,3 +144,10 @@ class MembershipProjectDTO(BaseModel):
 class MembershipsDTO(BaseModel):
     scientist: list[MembershipProjectDTO]
     volunteer: list[MembershipProjectDTO]
+
+
+class DenormUserDTO(BaseModel):
+    id: UUID
+    name: str
+    role: ProjectRoleEnum
+    avatar_link: str

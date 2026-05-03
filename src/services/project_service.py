@@ -24,10 +24,10 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 f"Project {project_id} not found")
 
-        if project.status == ProjectStatusEnum.DELETED:
+        if project["status"] == ProjectStatusEnum.DELETED:
             raise project_errors.ProjectDeletedError(
                 f"Project {project_id} is deleted")
-        if project.status == ProjectStatusEnum.FINISHED:
+        if project["status"] == ProjectStatusEnum.FINISHED:
             raise project_errors.ProjectFinishedError(
                 f"Project {project_id} is finished")
 
@@ -40,7 +40,7 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 f"Project {project_id} not found")
 
-        if project.status == ProjectStatusEnum.DELETED:
+        if project["status"] == ProjectStatusEnum.DELETED:
             raise project_errors.ProjectDeletedError(
                 f"Project {project_id} is deleted")
 
@@ -216,10 +216,8 @@ class ProjectService():
 
     async def get_post(self, id: UUID) -> Post:
         try:
-            await self._check_project_accessible(post.project_id)
-
             post = await self._project_repository.get_post(id)
-
+            await self._check_project_accessible(post.project_id)
             return post
         except adapter_errors.PostNotFoundError:
             raise project_errors.PostNotFoundError(

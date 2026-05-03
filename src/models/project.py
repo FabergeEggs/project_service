@@ -11,7 +11,6 @@ class ProjectStatusEnum(str, Enum):
     DELETED = "DELETED"
 
 
-# !!! DELETED should be deleted
 class TaskStatusEnum(str, Enum):
     ACTIVE = "ACTIVE"
     FINISHED = "FINISHED"

@@ -176,3 +176,22 @@ class TestRemoveMember:
 
         with pytest.raises(project_errors.UserNotFoundError):
             await service.remove_member(project_id, user_id)
+
+
+@pytest.mark.unit
+class TestUpsertDenormUser:
+    @pytest.mark.asyncio
+    async def test_upsert_denorm_user_success(self, service, repo):
+        user = make_denorm_user()
+
+        await service.upsert_denorm_user(user)
+
+        repo.upsert_denorm_user.assert_awaited_once_with(user)
+
+    @pytest.mark.asyncio
+    async def test_upsert_denorm_user_not_found(self, service, repo):
+        user = make_denorm_user()
+        repo.upsert_denorm_user.side_effect = adapter_errors.UserNotFoundError
+
+        with pytest.raises(project_errors.UserNotFoundError):
+            await service.upsert_denorm_user(user)

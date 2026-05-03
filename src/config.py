@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     kafka_topic_answers: str = Field(
         default="project-answers", alias="KAFKA_TOPIC_ANSWERS"
     )
+    kafka_topic_comments: str = Field(
+        default="project-comments", alias="KAFKA_TOPIC_COMMENTS"
+    )
     kafka_topic_profile: str = Field(
         default="project-profile", alias="KAFKA_TOPIC_PROFILE"
     )

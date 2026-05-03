@@ -88,10 +88,10 @@ class ProjectPostgresRepository:
                 result = await conn.execute(
                     """
                     SELECT p.id, p.label, p.description, p.creator_id,
-                    du.username AS creator, p.status, p.created_at, p.updated_at
+                        du.name AS creator, p.status, p.created_at
                     FROM project p
                     LEFT JOIN denorm_user du ON du.id = p.creator_id
-                    WHERE id = %s AND status != 'DELETED'
+                    WHERE p.id = %s AND p.status != 'DELETED'
                     """,
                     (id,)
                 )
@@ -100,7 +100,7 @@ class ProjectPostgresRepository:
 
                 if not row:
                     raise adapter_errors.ProjectNotFoundError(
-                        f"Project with id {id} was't found"
+                        f"Project with id {id} wasn't found"
                     )
 
                 tags_result = await conn.execute(
@@ -115,8 +115,9 @@ class ProjectPostgresRepository:
                 tags_rows = await tags_result.fetchall()
 
                 tags = [
-                    Tag(tag_id=row[0], name=row[1], quantity_count=row[2])
-                    for row in tags_rows
+                    Tag(tag_id=tag_row[0], name=tag_row[1],
+                        quantity_count=tag_row[2])
+                    for tag_row in tags_rows
                 ]
 
                 return {
@@ -127,7 +128,6 @@ class ProjectPostgresRepository:
                     "creator_name": row[4],
                     "status": ProjectStatusEnum(row[5]),
                     "created_at": row[6],
-                    "updated_at": row[7],
                     "tags": tags
                 }
 
@@ -225,16 +225,8 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             result = await conn.execute(
                 """
-                SELECT
-                    p.id,
-                    p.label,
-                    p.short_description,
-                    p.description,
-                    p.creator_id,
-                    du.name as creator,
-                    p.status,
-                    p.created_at,
-                    p.updated_at
+                SELECT p.id, p.label, p.short_description, p.description,
+                p.creator_id, du.name AS creator, p.status, p.created_at, p.updated_at
                 FROM project p
                 LEFT JOIN denorm_user du ON du.id = p.creator_id
                 WHERE p.id = ANY(%s) AND p.status != 'DELETED'
@@ -291,7 +283,7 @@ class ProjectPostgresRepository:
                             short_description, description,
                             created_at, updated_at,
                             answer_count, status
-                        ) VALUES (%s %s %s %s %s %s %s %s)
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             task_id,
@@ -349,12 +341,10 @@ class ProjectPostgresRepository:
     async def get_task(self, id: UUID) -> dict:
         async with self._pool.connection() as conn:
             async with conn.transaction():
-                result = conn.execute(
+                result = await conn.execute(
                     """
-                    SELECT t.id, t.project_id, t.label, t.creator_id,
-                    t.short_description, t.description, t.created_at,
-                    t.updated_at, t.status, t.answer_count,
-                    du.username AS creator_username
+                    SELECT t.id, t.label, t.short_description, t.description, t.creator_id,
+                    du.name AS creator, t.status, t.created_at, t.updated_at
                     FROM task t
                     LEFT JOIN denorm_user du ON du.id = t.creator_id
                     WHERE t.id = %s AND t.status != 'DELETED'
@@ -409,9 +399,9 @@ class ProjectPostgresRepository:
                 result = await conn.execute(
                     """
                         UPDATE post
-                        SET answer_count = answer_count - 1,
+                        SET comments_count = comments_count - 1,
                             updated_at = NOW()
-                        WHERE id = %s AND answer_count > 0
+                        WHERE id = %s AND comments_count > 0
                         RETURNING id
                         """,
                     (id,)
@@ -472,11 +462,11 @@ class ProjectPostgresRepository:
                 try:
                     await conn.execute(
                         """
-                        INSERTN INTO post (
+                        INSERT INTO post (
                             id, project_id, label, creator_id,
                             short_description, description,
                             comments_count, created_at, updated_at
-                        ) VALUE
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """,
                         (
                             post_id,
@@ -551,7 +541,7 @@ class ProjectPostgresRepository:
     async def get_post(self, id: UUID) -> dict:
         async with self._pool.connection() as conn:
             async with conn.transaction():
-                result = conn.execute(
+                result = await conn.execute(
                     """
                     SELECT t.id, t.project_id, t.label, t.creator_id,
                     du.name AS creator_name, t.short_description, t.description,
@@ -566,12 +556,12 @@ class ProjectPostgresRepository:
                 rows = await result.fetchall()
 
                 if not rows:
-                    raise adapter_errors.TaskNotFoundError(
-                        f"Task with id {id} not found"
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {id} not found"
                     )
 
                 return {
-                    "task_id": rows[0][0],
+                    "post_id": rows[0][0],
                     "project_id": rows[0][1],
                     "label": rows[0][2],
                     "creator_id": rows[0][3],
@@ -651,7 +641,7 @@ class ProjectPostgresRepository:
                     (id,)
                 )
 
-    async def get_publications(
+    async def get_project_publications(
         self,
         project_id: UUID,
         limit: int = 20,
@@ -659,11 +649,11 @@ class ProjectPostgresRepository:
     ) -> list[dict]:
         async with self._pool.connection() as conn:
             async with conn.transaction():
-                rows = await conn.fetch(
+                result = await conn.execute(
                     """
                     (
                         SELECT
-                            p.id,
+                            p.id as id,
                             p.project_id,
                             p.label,
                             p.short_description,
@@ -681,7 +671,7 @@ class ProjectPostgresRepository:
                     UNION ALL
                     (
                         SELECT
-                            t.id,
+                            t.id as id,
                             t.project_id,
                             t.label,
                             t.short_description,
@@ -690,7 +680,7 @@ class ProjectPostgresRepository:
                             du.name as creator_name,
                             'task' as type,
                             t.status as status,
-                            t.answers_count as answers_count
+                            t.answer_count as answers_count
                         FROM task t
                         LEFT JOIN denorm_user du ON du.id = t.creator_id
                         WHERE t.project_id = %s
@@ -706,7 +696,24 @@ class ProjectPostgresRepository:
                     )
                 )
 
-                return [dict(row) for row in rows]
+                rows = await result.fetchall()
+
+                publications = []
+                for row in rows:
+                    publications.append({
+                        "id": row[0],
+                        "project_id": row[1],
+                        "label": row[2],
+                        "short_description": row[3],
+                        "created_at": row[4],
+                        "creator_id": row[5],
+                        "creator_name": row[6],
+                        "type": row[7],
+                        "status": row[8],
+                        "answers_count": row[9]
+                    })
+
+                return publications
 
     async def upsert_denorm_user(self, user: DenormUser) -> None:
         async with self._pool.connection() as conn:
