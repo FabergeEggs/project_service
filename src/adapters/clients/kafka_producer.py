@@ -54,7 +54,7 @@ class KafkaProducerClient:
 
     async def send_create_post(self, post: Post) -> None:
         await self._send_event(
-            topic="post.create",
+            topic="post.created",
             key=str(post.post_id),
             value={
                 "type": "post.created",
@@ -70,7 +70,7 @@ class KafkaProducerClient:
 
     async def send_update_post(self, post: Post) -> None:
         await self._send_event(
-            topic="post.update",
+            topic="post.updated",
             key=str(post.post_id),
             value={
                 "type": "post.updated",
@@ -86,10 +86,10 @@ class KafkaProducerClient:
 
     async def send_delete_post(self, post_id: UUID) -> None:
         await self._send_event(
-            topic="post.delete",
+            topic="post.deleted",
             key=str(post_id),
             value={
-                "type": "post.updated",
+                "type": "post.deleted",
                 "post_id": str(post_id),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
@@ -97,7 +97,7 @@ class KafkaProducerClient:
 
     async def send_create_task(self, task: Task) -> None:
         await self._send_event(
-            topic="task.create",
+            topic="task.created",
             key=str(task.task_id),
             value={
                 "type": "task.created",
@@ -107,7 +107,7 @@ class KafkaProducerClient:
                 "label": task.label,
                 "short_description": task.short_description,
                 "status": task.status.value,
-                "answer_count": str(task.answers_count),
+                "answer_count": task.answers_count,
                 "created_at": task.created_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
@@ -115,17 +115,17 @@ class KafkaProducerClient:
 
     async def send_update_task(self, task: Task) -> None:
         await self._send_event(
-            topic="task.create",
+            topic="task.updated",
             key=str(task.task_id),
             value={
-                "type": "task.update",
+                "type": "task.updated",
                 "task_id": str(task.task_id),
                 "project_id": str(task.project_id),
                 "creator_id": str(task.creator_id),
                 "label": task.label,
                 "short_description": task.short_description,
                 "status": task.status.value,
-                "answer_count": str(task.answers_count),
+                "answer_count": task.answers_count,
                 "updated_at": task.updated_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
@@ -133,7 +133,7 @@ class KafkaProducerClient:
 
     async def send_delete_task(self, task_id: UUID) -> None:
         await self._send_event(
-            topic="task.delete",
+            topic="task.deleted",
             key=str(task_id),
             value={
                 "type": "task.deleted",

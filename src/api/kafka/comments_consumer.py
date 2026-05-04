@@ -26,7 +26,7 @@ class CommentsKafkaConsumer(BaseKafkaConsumer):
 
             if event_type == "comment.created":
                 await self._project_service.increment_post_answer(post_id)
-            elif event == "comment.deleted":
+            elif event_type == "comment.deleted":
                 await self._project_service.decrement_post_answer(post_id)
             else:
                 logger.debug(f"Ignoring event type: {event_type}")

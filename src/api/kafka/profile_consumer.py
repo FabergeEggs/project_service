@@ -5,6 +5,7 @@ from aiokafka import AIOKafkaConsumer
 from src.services.project_service import ProjectService
 from src.api.kafka.base_consumer import BaseKafkaConsumer
 from loguru import logger
+from src.models.project import DenormUser, ProjectRoleEnum
 
 
 class ProfileKafkaConsumer(BaseKafkaConsumer):
@@ -26,9 +27,12 @@ class ProfileKafkaConsumer(BaseKafkaConsumer):
                 return
 
             await self._project_service.upsert_denorm_user(
-                user_id=UUID(user_id),
-                name=name,
-                avatar_link=avatar_link or ""
+                DenormUser(
+                    id=UUID(user_id),
+                    name=name,
+                    avatar_link=avatar_link or "",
+                    role=ProjectRoleEnum.VOLUNTEER
+                )
             )
 
             logger.debug(f"Upserted denorm user: {user_id} ({name})")
