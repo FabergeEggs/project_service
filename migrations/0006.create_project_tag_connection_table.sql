@@ -7,4 +7,6 @@ CREATE TABLE IF NOT EXISTS
         tag_id UUID NOT NULL,
         FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE,
         PRIMARY KEY (project_id, tag_id)
-    )
+    );
+
+CREATE INDEX IF NOT EXISTS idx_project_tag_connection_tag_id ON project_tag_connection (project_id);

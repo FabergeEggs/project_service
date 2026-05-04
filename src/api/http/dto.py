@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 from datetime import datetime
 from src.models.project import ProjectRoleEnum, ProjectStatusEnum, TaskStatusEnum
 
@@ -14,62 +14,59 @@ class TagDTO(BaseModel):
 class TaskDTO(BaseModel):
     task_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     short_description: str
     description: str
     created_at: datetime
+    updated_at: datetime
     answers_count: int = 0
     status: TaskStatusEnum
 
 
 class TaskCreateDTO(BaseModel):
-    project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
-    creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
-    status: TaskStatusEnum = TaskStatusEnum.ACTIVE
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class TaskUpdateDTO(BaseModel):
-    project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
-    creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
-    status: TaskStatusEnum
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
+    status: TaskStatusEnum = Field(...)
 
 
 class PostDTO(BaseModel):
     post_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     short_description: str
     description: str
+    comments_count: int
     created_at: datetime
+    updated_at: datetime
 
 
 class PostCreateDTO(BaseModel):
-    project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
-    creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class PostUpdateDTO(BaseModel):
-    project_id: UUID
-    label: str = Field(..., min_length=3, max_length=200)
-    creator: str
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
 
 
 class ProjectDTO(BaseModel):
     id: UUID
     label: str
+    creator_id: UUID
     creator: str
     short_description: str
     description: str
@@ -80,7 +77,8 @@ class ProjectDTO(BaseModel):
 
 
 class ProjectInfoDTO(BaseModel):
-    id: UUID
+    project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     description: str
@@ -94,18 +92,17 @@ class ProjectDetailDTO(ProjectDTO):
 
 
 class ProjectCreateDTO(BaseModel):
-    label: str = Field(..., min_length=3, max_length=200)
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
     tags: list[str]
-    creator: str
     status: ProjectStatusEnum = ProjectStatusEnum.ACTIVE
 
 
 class ProjectUpdateDTO(BaseModel):
-    label: str = Field(..., min_length=3, max_length=200)
-    short_description: str = Field(..., max_length=300)
-    description: str = Field(..., max_length=10000)
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
     tags: list[str]
     status: ProjectStatusEnum
 
@@ -117,8 +114,40 @@ class ProjectStatsDTO(BaseModel):
     answers_count: int
 
 
+class PublicationDTO(BaseModel):
+    id: UUID
+    project_id: UUID
+    label: str
+    short_description: str
+    created_at: datetime
+    creator_id: UUID
+    creator_name: str
+    type: Literal["post", "task"]
+    answers_count: int
+
+    status: Optional[TaskStatusEnum] = None
+
+
+class PublicationsResponse(BaseModel):
+    items: list[PublicationDTO]
+    next_cursor: Optional[str] = None
+    has_more: bool = False
+
+
+class MembershipProjectDTO(BaseModel):
+    project_id: UUID
+    label: str
+    short_description: str
+    created_at: datetime
+    status: ProjectStatusEnum
+    creator_name: str
+
+
+class MembershipsDTO(BaseModel):
+    scientist: list[MembershipProjectDTO]
+    volunteer: list[MembershipProjectDTO]
+
+
 class DenormUserDTO(BaseModel):
     id: UUID
-    name: str
     role: ProjectRoleEnum
-    avatar_link: str

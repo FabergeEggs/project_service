@@ -34,7 +34,7 @@ class Tag:
 class Project:
     id: UUID
     label: str
-    creator: str
+    creator_id: UUID
     short_description: str
     description: str
     tags: list[Tag]
@@ -47,22 +47,25 @@ class Project:
 class Post:
     post_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
-    creator: str
     short_description: str
     description: str
+    comments_count: int
     created_at: datetime
+    updated_at: datetime
 
 
 @dataclass
 class Task:
     task_id: UUID
     project_id: UUID
+    creator_id: UUID
     label: str
-    creator: str
     short_description: str
     description: str
     created_at: datetime
+    updated_at: datetime
     status: TaskStatusEnum
     answers_count: int = 0
 

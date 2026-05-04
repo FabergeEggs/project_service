@@ -18,6 +18,14 @@ class ProjectAlreadyExistsError(ProjectError):
     ...
 
 
+class ProjectDeletedError(ProjectError):
+    ...
+
+
+class ProjectFinishedError(ProjectError):
+    ...
+
+
 class PostNotFoundError(PostError):
     ...
 
@@ -31,6 +39,10 @@ class TaskNotFoundError(TaskError):
 
 
 class TaskAlreadyExistsError(TaskError):
+    ...
+
+
+class TaskFinishedError(TaskError):
     ...
 
 

@@ -21,20 +21,12 @@ def make_denorm_user(**kwargs) -> DenormUser:
     return DenormUser(**default)
 
 
-def make_profile(**kwargs) -> Project:
-    default = dict(
-        id=uuid4(),
-        label="Test Project",
-        creator="test_user",
-        short_description="Short test description",
-        description="Full detailed description for testing purposes",
-        tags=[Tag(tag_id=uuid4(), name="test_tag")],
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        status=ProjectStatusEnum.ACTIVE
-    )
-    default.update(kwargs)
-    return Project(**default)
+def make_project_mock(**kwargs):
+    class MockProject:
+        def __init__(self):
+            self.id = kwargs.get("id", uuid4())
+            self.status = kwargs.get("status", "ACTIVE")
+    return MockProject()
 
 
 @pytest.fixture
@@ -58,13 +50,14 @@ def service(repo, kafka):
 class TestGetUserMemberships:
     @pytest.mark.asyncio
     async def test_get_user_memberships(self, service, repo):
-        user = make_denorm_user()
-        repo.get_user_memberships.return_value = user
+        user_id = uuid4()
+        memberships = [[uuid4(), uuid4()], [uuid4()]]
+        repo.get_user_memberships.return_value = memberships
 
-        result = await service.get_user_memberships(user.id)
+        result = await service.get_user_memberships(user_id)
 
-        repo.get_user_memberships.assert_awaited_once_with(user.id)
-        assert result == user
+        repo.get_user_memberships.assert_awaited_once_with(user_id)
+        assert result == memberships
 
     @pytest.mark.asyncio
     async def test_get_user_memberships_not_found(self, service, repo):
@@ -81,16 +74,39 @@ class TestAddMember:
     async def test_add_member(self, service, repo):
         user = make_denorm_user()
         project_id = uuid4()
+        project = make_project_mock(id=project_id)
+        repo.get_project_info.return_value = project
 
         await service.add_member(project_id, user)
 
+        repo.get_project_info.assert_awaited_once_with(project_id)
         repo.add_member.assert_awaited_once_with(project_id, user)
+
+    @pytest.mark.asyncio
+    async def test_add_member_project_deleted(self, service, repo):
+        user = make_denorm_user()
+        project_id = uuid4()
+        project = make_project_mock(id=project_id, status="DELETED")
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service.add_member(project_id, user)
+
+    @pytest.mark.asyncio
+    async def test_add_member_project_finished(self, service, repo):
+        user = make_denorm_user()
+        project_id = uuid4()
+        project = make_project_mock(id=project_id, status="FINISHED")
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectFinishedError):
+            await service.add_member(project_id, user)
 
     @pytest.mark.asyncio
     async def test_add_member_project_not_found(self, service, repo):
         user = make_denorm_user()
         project_id = uuid4()
-        repo.add_member.side_effect = adapter_errors.ProjectNotFoundError
+        repo.get_project_info.side_effect = adapter_errors.ProjectNotFoundError
 
         with pytest.raises(project_errors.ProjectNotFoundError):
             await service.add_member(project_id, user)
@@ -99,6 +115,8 @@ class TestAddMember:
     async def test_add_member_already_exists(self, service, repo):
         user = make_denorm_user()
         project_id = uuid4()
+        project = make_project_mock(id=project_id)
+        repo.get_project_info.return_value = project
         repo.add_member.side_effect = adapter_errors.UserAlreadyExistsError
 
         with pytest.raises(project_errors.UserAlreadyExistsError):
@@ -111,16 +129,39 @@ class TestRemoveMember:
     async def test_remove_member(self, service, repo):
         user_id = uuid4()
         project_id = uuid4()
+        project = make_project_mock(id=project_id)
+        repo.get_project_info.return_value = project
 
         await service.remove_member(project_id, user_id)
 
+        repo.get_project_info.assert_awaited_once_with(project_id)
         repo.remove_member.assert_awaited_once_with(project_id, user_id)
+
+    @pytest.mark.asyncio
+    async def test_remove_member_project_deleted(self, service, repo):
+        user_id = uuid4()
+        project_id = uuid4()
+        project = make_project_mock(id=project_id, status="DELETED")
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectDeletedError):
+            await service.remove_member(project_id, user_id)
+
+    @pytest.mark.asyncio
+    async def test_remove_member_project_finished(self, service, repo):
+        user_id = uuid4()
+        project_id = uuid4()
+        project = make_project_mock(id=project_id, status="FINISHED")
+        repo.get_project_info.return_value = project
+
+        with pytest.raises(project_errors.ProjectFinishedError):
+            await service.remove_member(project_id, user_id)
 
     @pytest.mark.asyncio
     async def test_remove_member_project_not_found(self, service, repo):
         user_id = uuid4()
         project_id = uuid4()
-        repo.remove_member.side_effect = adapter_errors.ProjectNotFoundError
+        repo.get_project_info.side_effect = adapter_errors.ProjectNotFoundError
 
         with pytest.raises(project_errors.ProjectNotFoundError):
             await service.remove_member(project_id, user_id)
@@ -129,16 +170,28 @@ class TestRemoveMember:
     async def test_remove_member_user_not_found(self, service, repo):
         user_id = uuid4()
         project_id = uuid4()
+        project = make_project_mock(id=project_id)
+        repo.get_project_info.return_value = project
         repo.remove_member.side_effect = adapter_errors.UserNotFoundError
 
         with pytest.raises(project_errors.UserNotFoundError):
             await service.remove_member(project_id, user_id)
 
-    @pytest.mark.asyncio
-    async def test_remove_member_already_exists(self, service, repo):
-        user_id = uuid4()
-        project_id = uuid4()
-        repo.remove_member.side_effect = adapter_errors.UserAlreadyExistsError
 
-        with pytest.raises(project_errors.UserAlreadyExistsError):
-            await service.remove_member(project_id, user_id)
+@pytest.mark.unit
+class TestUpsertDenormUser:
+    @pytest.mark.asyncio
+    async def test_upsert_denorm_user_success(self, service, repo):
+        user = make_denorm_user()
+
+        await service.upsert_denorm_user(user)
+
+        repo.upsert_denorm_user.assert_awaited_once_with(user)
+
+    @pytest.mark.asyncio
+    async def test_upsert_denorm_user_not_found(self, service, repo):
+        user = make_denorm_user()
+        repo.upsert_denorm_user.side_effect = adapter_errors.UserNotFoundError
+
+        with pytest.raises(project_errors.UserNotFoundError):
+            await service.upsert_denorm_user(user)
