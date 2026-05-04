@@ -90,14 +90,14 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
 
-    async def get_projects(self, ids: list[id]) -> list[Project]:
+    async def get_projects(self, ids: list[id]) -> list[dict]:
         try:
             projects = await self._project_repository.get_projects(ids)
 
             for project in projects:
-                if project.status == ProjectStatusEnum.DELETED:
+                if project["status"] == ProjectStatusEnum.DELETED:
                     raise project_errors.ProjectDeletedError(
-                        f"Project with ID {project.id} is deleted.")
+                        f"Project with ID {project['id']} is deleted.")
 
             return projects
         except adapter_errors.ProjectNotFoundError:
@@ -107,11 +107,11 @@ class ProjectService():
     async def create_task(self, task: Task) -> UUID:
         await self._check_project_active(task.project_id)
 
-        task.id = uuid4()
+        task.task_id = uuid4()
         try:
             await self._project_repository.create_task(task)
             await self._kafka_producer.send_create_task(task)
-            return task.id
+            return task.task_id
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
@@ -133,7 +133,7 @@ class ProjectService():
         try:
             task = await self._project_repository.get_task(id)
 
-            await self._check_project_accessible(task.project_id)
+            await self._check_project_accessible(task["project_id"])
 
             return task
         except adapter_errors.ProjectNotFoundError:
@@ -170,11 +170,11 @@ class ProjectService():
     async def create_post(self, post: Post) -> UUID:
         await self._check_project_active(post.project_id)
 
-        post.id = uuid4()
+        post.post_id = uuid4()
         try:
             await self._project_repository.create_post(post)
             await self._kafka_producer.send_create_post(post)
-            return post.id
+            return post.post_id
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Project of this post doesn't exist")
@@ -202,7 +202,7 @@ class ProjectService():
             raise project_errors.PostNotFoundError(
                 "Couldn't find post by given ID")
 
-        await self._check_project_active(post.project_id)
+        await self._check_project_active(post["project_id"])
 
         try:
             await self._project_repository.delete_post(id)
@@ -217,7 +217,7 @@ class ProjectService():
     async def get_post(self, id: UUID) -> Post:
         try:
             post = await self._project_repository.get_post(id)
-            await self._check_project_accessible(post.project_id)
+            await self._check_project_accessible(post["project_id"])
             return post
         except adapter_errors.PostNotFoundError:
             raise project_errors.PostNotFoundError(

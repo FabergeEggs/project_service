@@ -138,7 +138,7 @@ class ProjectPostgresRepository:
                 SELECT
                     COUNT(DISTINCT puc.user_id) as members_count,
                     COUNT(t.id) as tasks_count,
-                    COALESCE(SUM(t.answers_count), 0) as total_answers_count
+                    COALESCE(SUM(t.answer_count), 0) as total_answers_count
                 FROM project p
                 LEFT JOIN project_user_connection puc
                     ON puc.project_id = p.id
@@ -221,7 +221,7 @@ class ProjectPostgresRepository:
                             )
                         )
 
-    async def get_projects(self, ids: list[UUID]) -> list[Project]:
+    async def get_projects(self, ids: list[UUID]) -> list[dict]:
         async with self._pool.connection() as conn:
             result = await conn.execute(
                 """
@@ -255,17 +255,18 @@ class ProjectPostgresRepository:
                     for tag_row in tags_rows
                 ]
 
-                projects.append(Project(
-                    id=row[0],
-                    label=row[1],
-                    short_description=row[2],
-                    description=row[3],
-                    creator=row[4],
-                    status=ProjectStatusEnum(row[5]),
-                    created_at=row[6],
-                    updated_at=row[7],
-                    tags=tags
-                ))
+                projects.append({
+                    "id": row[0],
+                    "label": row[1],
+                    "short_description": row[2],
+                    "description": row[3],
+                    "creator_id": row[4],
+                    "creator": row[5],
+                    "status": ProjectStatusEnum(row[6]),
+                    "created_at": row[7],
+                    "updated_at": row[8],
+                    "tags": tags
+                })
 
             return projects
 
@@ -343,8 +344,9 @@ class ProjectPostgresRepository:
             async with conn.transaction():
                 result = await conn.execute(
                     """
-                    SELECT t.id, t.label, t.short_description, t.description, t.creator_id,
-                    du.name AS creator, t.status, t.created_at, t.updated_at
+                    SELECT t.id, t.project_id, t.label, t.short_description,
+                        t.description, t.creator_id, du.name AS creator,
+                        t.status, t.created_at, t.updated_at, t.answer_count
                     FROM task t
                     LEFT JOIN denorm_user du ON du.id = t.creator_id
                     WHERE t.id = %s AND t.status != 'DELETED'
@@ -353,7 +355,6 @@ class ProjectPostgresRepository:
                 )
 
                 rows = await result.fetchall()
-
                 if not rows:
                     raise adapter_errors.TaskNotFoundError(
                         f"Task with id {id} not found"
@@ -363,13 +364,13 @@ class ProjectPostgresRepository:
                     "task_id": rows[0][0],
                     "project_id": rows[0][1],
                     "label": rows[0][2],
-                    "creator_id": rows[0][3],
-                    "creator_name": rows[0][4],
-                    "short_description": rows[0][5],
-                    "description": rows[0][6],
-                    "created_at": rows[0][7],
-                    "updated_at": rows[0][8],
-                    "status": TaskStatusEnum(rows[0][9]),
+                    "short_description": rows[0][3],
+                    "description": rows[0][4],
+                    "creator_id": rows[0][5],
+                    "creator_name": rows[0][6],
+                    "status": TaskStatusEnum(rows[0][7]),
+                    "created_at": rows[0][8],
+                    "updated_at": rows[0][9],
                     "answers_count": rows[0][10]
                 }
 
@@ -554,7 +555,6 @@ class ProjectPostgresRepository:
                 )
 
                 rows = await result.fetchall()
-
                 if not rows:
                     raise adapter_errors.PostNotFoundError(
                         f"Post with id {id} not found"
@@ -579,17 +579,19 @@ class ProjectPostgresRepository:
             result = await conn.execute(
                 """
                 SELECT
-                    p.id,
-                    p.label,
-                    p.short_description,
-                    p.status,
-                    p.created_at,
-                    puc.role
+                p.id,
+                p.label,
+                p.short_description,
+                p.status,
+                p.created_at,
+                puc.role,
+                u.name as creator_name
                 FROM project_user_connection puc
-                JOIN project p ON p.id = puc.project_id
-                WHERE puc.user_id = %s
-                    AND p.status != 'DELETED'
-                    AND puc.role != 'DELETED'
+                JOIN project p ON p.id=puc.project_id
+                LEFT JOIN denorm_user u ON u.id=p.creator_id
+                WHERE puc.user_id= %s
+                AND p.status != 'DELETED'
+                AND puc.role != 'DELETED'
                 """,
                 (user_id,)
             )
@@ -603,16 +605,17 @@ class ProjectPostgresRepository:
                 role = row[5]
 
                 project = {
-                    "id": row[0],
+                    "project_id": row[0],
                     "label": row[1],
                     "short_description": row[2],
                     "status": row[3],
                     "created_at": row[4],
+                    "creator_name": row[6] or "Unknown",
                 }
 
-                if role == 'scientist':
+                if role == 'SCIENTIST':
                     scientist_projects.append(project)
-                elif role == 'volunteer':
+                elif role == 'VOLUNTEER':
                     volunteer_projects.append(project)
 
             return [scientist_projects, volunteer_projects]
@@ -630,16 +633,23 @@ class ProjectPostgresRepository:
                     (project_id, user.id, user.role)
                 )
 
-    async def remove_member(self, id: UUID) -> None:
+    async def remove_member(self, project_id: UUID, user_id: UUID) -> None:
         async with self._pool.connection() as conn:
             async with conn.transaction():
-                await conn.execute(
+                result = await conn.execute(
                     """
                     DELETE FROM project_user_connection
-                    WHERE id = %s
+                    WHERE project_id = %s AND user_id = %s
+                    RETURNING project_id, user_id
                     """,
-                    (id,)
+                    (project_id, user_id)
                 )
+
+                row = await result.fetchone()
+                if not row:
+                    raise adapter_errors.UserNotFoundError(
+                        f"User {user_id} not found in project {project_id}"
+                    )
 
     async def get_project_publications(
         self,

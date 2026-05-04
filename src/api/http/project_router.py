@@ -13,7 +13,7 @@ from src.api.http.dto import (
     ProjectDTO, ProjectInfoDTO, ProjectDetailDTO, ProjectCreateDTO, ProjectUpdateDTO,
     ProjectStatsDTO, TaskDTO, TaskCreateDTO, TaskUpdateDTO,
     PostDTO, PostCreateDTO, PostUpdateDTO, TagDTO, DenormUserDTO, PublicationDTO,
-    MembershipProjectDTO, MembershipsDTO
+    PublicationsResponse, MembershipProjectDTO, MembershipsDTO
 )
 import src.services.errors as project_errors
 
@@ -152,18 +152,19 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             projects = await project_service.get_projects(project_ids)
             return [
                 ProjectDTO(
-                    id=project.id,
-                    label=project.label,
-                    creator=project.creator,
-                    short_description=project.short_description,
-                    description=project.description,
+                    id=project["id"],
+                    label=project["label"],
+                    creator_id=project["creator_id"],
+                    creator=project["creator"],
+                    short_description=project["short_description"],
+                    description=project["description"],
                     tags=[
                         TagDTO(tag_id=tag.tag_id, name=tag.name)
-                        for tag in project.tags
+                        for tag in project["tags"]
                     ],
-                    created_at=project.created_at,
-                    updated_at=project.updated_at,
-                    status=project.status
+                    created_at=project["created_at"],
+                    updated_at=project["updated_at"],
+                    status=project["status"]
                 ) for project in projects
             ]
         except project_errors.ProjectNotFoundError as e:
@@ -244,7 +245,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
             )
 
-        if existing.creator_id != current_user.user_id:
+        if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the project creator can create tasks"
@@ -252,15 +253,15 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
 
         task = Task(
             task_id=task_id,
-            project_id=existing.project_id,
+            project_id=existing["project_id"],
             label=task_data.label,
-            creator_id=existing.creator_id,
+            creator_id=existing["creator_id"],
             short_description=task_data.short_description,
             description=task_data.description,
-            created_at=existing.created_at,
+            created_at=existing["created_at"],
             updated_at=datetime.now(timezone.utc),
             status=TaskStatusEnum(task_data.status),
-            answers_count=existing.answers_count
+            answers_count=existing["answers_count"]
         )
 
         try:
@@ -292,7 +293,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 project_id=task["project_id"],
                 label=task["label"],
                 creator_id=task["creator_id"],
-                creator=task["creator"],
+                creator=task["creator_name"],
                 short_description=task["short_description"],
                 description=task["description"],
                 created_at=task["created_at"],
@@ -373,7 +374,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
             )
 
-        if existing.creator_id != current_user.user_id:
+        if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the post creator can update the post"
@@ -381,13 +382,13 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
 
         post = Post(
             post_id=post_id,
-            project_id=existing.project_id,
+            project_id=existing["project_id"],
             label=post_data.label,
-            creator_id=existing.creator_id,
+            creator_id=existing["creator_id"],
             short_description=post_data.short_description,
             description=post_data.description,
-            comments_count=existing.comments_count,
-            created_at=existing.created_at,
+            comments_count=existing["comments_count"],
+            created_at=existing["created_at"],
             updated_at=datetime.now(timezone.utc)
         )
 
@@ -423,7 +424,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
             )
 
-        if existing.creator_id != current_user.user_id:
+        if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the post creator can delete the post"
@@ -449,7 +450,8 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 post_id=post["post_id"],
                 project_id=post["project_id"],
                 label=post["label"],
-                creator=post["creator"],
+                creator_id=post["creator_id"],
+                creator=post["creator_name"],
                 short_description=post["short_description"],
                 description=post["description"],
                 comments_count=post["comments_count"],
@@ -482,7 +484,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             )
 
         try:
-            await project_service.add_member(project_id, user_data.user_id)
+            await project_service.add_member(project_id, user_data)
             return {"message": "Member added successfully"}
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
@@ -533,7 +535,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
             )
 
-    @router.get("/{project_id}/publications", response_model=list[PublicationDTO])
+    @router.get("/{project_id}/publications", response_model=PublicationsResponse)
     async def get_publications(
         project_id: UUID,
         limit: int = 20,

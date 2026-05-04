@@ -32,8 +32,6 @@ class TaskCreateDTO(BaseModel):
 
 
 class TaskUpdateDTO(BaseModel):
-    task_id: UUID
-    project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -60,8 +58,6 @@ class PostCreateDTO(BaseModel):
 
 
 class PostUpdateDTO(BaseModel):
-    post_id: UUID
-    project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -132,6 +128,12 @@ class PublicationDTO(BaseModel):
     status: Optional[TaskStatusEnum] = None
 
 
+class PublicationsResponse(BaseModel):
+    items: list[PublicationDTO]
+    next_cursor: Optional[str] = None
+    has_more: bool = False
+
+
 class MembershipProjectDTO(BaseModel):
     project_id: UUID
     label: str
@@ -148,6 +150,4 @@ class MembershipsDTO(BaseModel):
 
 class DenormUserDTO(BaseModel):
     id: UUID
-    name: str
     role: ProjectRoleEnum
-    avatar_link: str

@@ -77,7 +77,6 @@ class KafkaProducerClient:
                 "post_id": str(post.post_id),
                 "project_id": str(post.project_id),
                 "creator_id": str(post.creator_id),
-                "creator": post.creator,
                 "label": post.label,
                 "short_description": post.short_description,
                 "updated_at": post.updated_at.isoformat(),
