@@ -18,24 +18,30 @@ class ProfileKafkaConsumer(BaseKafkaConsumer):
     async def _handle_message(self, message):
         try:
             event = json.loads(message.value.decode('utf-8'))
-            user_id = self._safe_get(event, "user_id", "id")
-            name = self._safe_get(event, "name", "username")
-            avatar_link = self._safe_get(event, "avatar_link", "avatar")
+            event_type = event.get("event_type")
+            user_id = event.get("user_id")
 
-            if not user_id or not name:
-                logger.warning(f"Invalid user event, missing fields: {event}")
+            if not user_id:
+                logger.warning("Missing user_id")
+                return
+
+            fields = {}
+            if event_type in ("user.created", "user.profile.updated"):
+                if "name" in event:
+                    fields["name"] = event["name"]
+            elif event_type == "user.avatar.updated":
+                if "avatar_link" in event:
+                    fields["avatar_url"] = event["avatar_link"]
+
+            if not fields:
+                logger.debug(f"No fields to update in event: {event}")
                 return
 
             await self._project_service.upsert_denorm_user(
-                DenormUser(
-                    id=UUID(user_id),
-                    name=name,
-                    avatar_link=avatar_link or "",
-                    role=ProjectRoleEnum.VOLUNTEER
-                )
+                user_id=UUID(user_id),
+                fields=fields,
+                defaults={"role": ProjectRoleEnum.VOLUNTEER}
             )
-
-            logger.debug(f"Upserted denorm user: {user_id} ({name})")
 
         except Exception as e:
             logger.error(

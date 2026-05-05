@@ -725,20 +725,35 @@ class ProjectPostgresRepository:
 
                 return publications
 
-    async def upsert_denorm_user(self, user: DenormUser) -> None:
+    async def upsert_denorm_user_partial(self, user_id: UUID, fields: dict, defaults: dict = None) -> None:
+        insert_cols = ["id"] + list(fields.keys())
+        if defaults:
+            for col in defaults:
+                if col not in insert_cols:
+                    insert_cols.append(col)
+        placeholders = ", ".join(["%s"] * len(insert_cols))
+
+        set_clauses = []
+        for col in fields.keys():
+            set_clauses.append(f"{col} = EXCLUDED.{col}")
+
+        on_conflict = ""
+        if set_clauses:
+            on_conflict = f"ON CONFLICT (id) DO UPDATE SET {', '.join(set_clauses)}"
+
+        values = [user_id]
+        for col in fields:
+            values.append(fields[col])
+        if defaults:
+            for col in defaults:
+                if col not in fields:
+                    values.append(defaults[col])
+
+        sql = f"""
+            INSERT INTO denorm_user ({', '.join(insert_cols)})
+            VALUES ({placeholders})
+            {on_conflict}
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
-                await conn.execute(
-                    """
-                    INSERT INTO denorm_user (
-                        id,
-                        name,
-                        avatar_url
-                    )
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (id) DO UPDATE
-                    SET name = EXCLUDED.name,
-                        avatar_url = EXCLUDED.avatar_url
-                    """,
-                    (user.id, user.name, user.avatar_url)
-                )
+                await conn.execute(sql, tuple(values))

@@ -25,7 +25,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
     async def health_check():
         return {"status": "healthy", "service": "project-service"}
 
-    @router.post("/", response_model=dict, status_code=status.HTTP_201_CREATED)
+    @router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
     async def create_project(
         project_data: ProjectCreateDTO,
         current_user: UserInfo = Depends(get_current_user)
