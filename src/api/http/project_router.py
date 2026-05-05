@@ -104,7 +104,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
     async def update_project(
         project_id: UUID,
         project_data: ProjectUpdateDTO,
-        current_user: UserInfo = Depends(get_current_user)
+        # current_user: UserInfo = Depends(get_current_user)
     ):
         try:
             existing = await project_service.get_project_info(project_id)
@@ -112,11 +112,11 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-        if existing["creator_id"] != current_user.user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only the project creator can update the project"
-            )
+        # if existing["creator_id"] != current_user.user_id:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_403_FORBIDDEN,
+        #         detail="Only the project creator can update the project"
+        #     )
 
         updated_project = Project(
             id=project_id,
