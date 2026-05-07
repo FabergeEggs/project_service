@@ -34,8 +34,8 @@ class ProjectRepository(Protocol):
     async def get_project_publications(
         self, project_id: UUID) -> list[dict]: ...
 
-    async def upsert_denorm_user_partial(
-        self, user_id: UUID, fields: dict, defaults: dict = None) -> None: ...
+    async def upsert_denorm_user(
+        self, user_id: UUID, data: dict) -> None: ...
 
 
 class ProjectKafkaProducer(Protocol):

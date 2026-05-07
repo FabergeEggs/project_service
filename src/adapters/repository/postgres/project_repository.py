@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from src.models.project import Project, Post, Task, DenormUser, Tag, ProjectStatusEnum, TaskStatusEnum
 from psycopg import errors as psycopg_errors
 import src.adapters.repository.errors as adapter_errors
+from loguru import logger
 
 
 class ProjectPostgresRepository:
@@ -725,35 +726,46 @@ class ProjectPostgresRepository:
 
                 return publications
 
-    async def upsert_denorm_user_partial(self, user_id: UUID, fields: dict, defaults: dict = None) -> None:
-        insert_cols = ["id"] + list(fields.keys())
-        if defaults:
-            for col in defaults:
-                if col not in insert_cols:
-                    insert_cols.append(col)
+    async def upsert_denorm_user(self, user_id: UUID, data: dict) -> None:
+        logger.info(
+            f"Repository.upsert_denorm_user called - user_id: {user_id}, data: {data}")
+
+        if not data:
+            data = {}
+            logger.debug("No data provided, using empty dict")
+
+        insert_data = dict(data)
+        avatar_in_data = "avatar_url" in insert_data
+        if not avatar_in_data:
+            insert_data["avatar_url"] = ""
+
+        insert_cols = ["id"] + list(insert_data.keys())
         placeholders = ", ".join(["%s"] * len(insert_cols))
 
-        set_clauses = []
-        for col in fields.keys():
-            set_clauses.append(f"{col} = EXCLUDED.{col}")
-
+        update_cols = [col for col in data.keys()]
+        set_clauses = [f"{col} = EXCLUDED.{col}" for col in update_cols]
         on_conflict = ""
         if set_clauses:
             on_conflict = f"ON CONFLICT (id) DO UPDATE SET {', '.join(set_clauses)}"
 
-        values = [user_id]
-        for col in fields:
-            values.append(fields[col])
-        if defaults:
-            for col in defaults:
-                if col not in fields:
-                    values.append(defaults[col])
+        values = [user_id] + [insert_data[col] for col in insert_data.keys()]
 
         sql = f"""
             INSERT INTO denorm_user ({', '.join(insert_cols)})
             VALUES ({placeholders})
             {on_conflict}
         """
-        async with self._pool.connection() as conn:
-            async with conn.transaction():
-                await conn.execute(sql, tuple(values))
+
+        logger.debug(f"Generated SQL: {sql}")
+        logger.debug(f"SQL values: {values}")
+
+        try:
+            async with self._pool.connection() as conn:
+                async with conn.transaction():
+                    await conn.execute(sql, tuple(values))
+            logger.info(
+                f"Successfully inserted/updated denorm_user for user_id: {user_id}")
+        except Exception as e:
+            logger.error(
+                f"Error executing upsert_denorm_user SQL for user_id {user_id}: {e}", exc_info=True)
+            raise

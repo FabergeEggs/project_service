@@ -100,10 +100,11 @@ async def _run(settings: Settings) -> None:
     )
     profile_kafka_consumer = ProfileKafkaConsumer(
         profile_consumer, project_service)
-    logger.debug(
-        "Profile Kafka consumer created: topic={}, group={}",
+    logger.info(
+        "Profile Kafka consumer created: topic={}, group={}, bootstrap={}",
         settings.kafka_topic_profile,
-        settings.kafka_group_id,
+        f"{settings.kafka_group_id}-profile",
+        settings.kafka_bootstrap,
     )
 
     config = uvicorn.Config(

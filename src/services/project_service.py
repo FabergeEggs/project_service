@@ -272,9 +272,18 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
 
-    async def upsert_denorm_user(self, user_id: UUID, fields: dict, defaults: dict = None) -> None:
+    async def upsert_denorm_user(self, user_id: UUID, data: dict) -> None:
         try:
-            await self._project_repository.upsert_denorm_user(user_id, fields, defaults)
+            logger.info(
+                f"ProjectService.upsert_denorm_user called - user_id: {user_id}, data: {data}")
+            await self._project_repository.upsert_denorm_user(user_id, data)
+            logger.info(
+                f"ProjectService.upsert_denorm_user completed successfully for user_id: {user_id}")
         except adapter_errors.UserNotFoundError:
+            logger.error(f"User {user_id} not found in repository")
             raise project_errors.UserNotFoundError(
                 "Couldn't find user by given ID")
+        except Exception as e:
+            logger.error(
+                f"Error in upsert_denorm_user for user_id {user_id}: {e}", exc_info=True)
+            raise

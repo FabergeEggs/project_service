@@ -23,7 +23,7 @@ class Settings(BaseSettings):
         default="project-comments", alias="KAFKA_TOPIC_COMMENTS"
     )
     kafka_topic_profile: str = Field(
-        default="project-profile", alias="KAFKA_TOPIC_PROFILE"
+        default="user.created", alias="KAFKA_TOPIC_PROFILE"
     )
     kafka_topic_events: str = Field(
         default="project-events", alias="KAFKA_TOPIC_EVENTS")
