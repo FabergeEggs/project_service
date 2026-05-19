@@ -3,8 +3,8 @@ FROM python:3.13-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+    gcc=4:14.2.0-1 \
+    libpq-dev=17.10-0+deb13u1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml uv.lock* ./
