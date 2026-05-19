@@ -32,3 +32,11 @@ class UserNotFoundError(UserErorr):
 
 class UserAlreadyExistsError(UserErorr):
     ...
+
+
+class TagError(Exception):
+    ...
+
+
+class TagNotFoundError(TagError):
+    ...

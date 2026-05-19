@@ -6,7 +6,6 @@ from src.models.project import Project, Post, Task, DenormUser, Tag, ProjectStat
 from psycopg import errors as psycopg_errors
 import src.adapters.repository.errors as adapter_errors
 from loguru import logger
-
 from src.adapters.repository.postgres.queries import (
     TagQueries,
     ProjectQueries,
@@ -15,12 +14,40 @@ from src.adapters.repository.postgres.queries import (
     MembershipQueries,
 )
 
+_ALLOWED_DENORM_USER_COLUMNS = {"name", "email", "avatar_url"}
+
 
 class ProjectPostgresRepository:
+    """
+    Repository for managing project-related data in PostgreSQL.
+
+    Provides asynchronous methods for CRUD operations on projects, tasks, posts,
+    tags, and project memberships. Uses connection pooling for database access.
+    """
+
     def __init__(self, pool: psycopg_pool.AsyncConnectionPool) -> None:
+        """
+        Initialize the repository with a database connection pool.
+
+        Args:
+            pool: Async connection pool for PostgreSQL database access.
+        """
         self._pool = pool
 
     async def _upsert_tag(self, conn, tag: Tag) -> UUID:
+        """
+        Insert or update a tag, returning its ID.
+
+        If a tag with the same name exists, increments its count.
+        Otherwise, creates a new tag entry.
+
+        Args:
+            conn: Active database connection.
+            tag: Tag object to upsert.
+
+        Returns:
+            UUID of the tag (existing or newly created).
+        """
         tag_id = tag.tag_id or uuid4()
 
         await conn.execute(
@@ -37,9 +64,24 @@ class ProjectPostgresRepository:
             (tag.name,)
         )
         row = await result.fetchone()
+        if not row:
+            raise adapter_errors.TagNotFoundError(
+                f"Tag '{tag.name}' not found after upsert")
         return row[0]
 
     async def create_project(self, project: Project) -> UUID:
+        """
+        Create a new project in the database.
+
+        Args:
+            project: Project object containing the project data.
+
+        Returns:
+            UUID of the newly created project.
+
+        Raises:
+            ProjectAlreadyExistsError: If a project with the same ID already exists.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 project_id = project.id or uuid4()
@@ -76,6 +118,18 @@ class ProjectPostgresRepository:
                 return project_id
 
     async def get_project_info(self, id: UUID) -> dict:
+        """
+        Retrieve detailed information about a specific project.
+
+        Args:
+            id: UUID of the project to retrieve.
+
+        Returns:
+            Dictionary containing project details including tags and creator name.
+
+        Raises:
+            ProjectNotFoundError: If no project exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -114,31 +168,53 @@ class ProjectPostgresRepository:
                 }
 
     async def get_project_statistics(self, id: UUID) -> dict:
+        """
+        Get aggregated statistics for a project.
+
+        Args:
+            id: UUID of the project.
+
+        Returns:
+            Dictionary containing members_count, tasks_count, and answers_count.
+
+        Raises:
+            ProjectNotFoundError: If no project exists with the given ID.
+        """
         async with self._pool.connection() as conn:
-            result = await conn.execute(
-                ProjectQueries.SELECT_PROJECT_STATISTICS,
-                (id,)
-            )
-
-            row = await result.fetchone()
-
-            if not row:
-                raise adapter_errors.ProjectNotFoundError(
-                    f"Project with id {id} not found"
+            async with conn.transaction():
+                result = await conn.execute(
+                    ProjectQueries.SELECT_PROJECT_STATISTICS,
+                    (id,)
                 )
 
-            members_count = row[0] if row[0] is not None else 0
-            tasks_count = row[1] if row[1] is not None else 0
-            answers_count = row[2] if row[2] is not None else 0
+                row = await result.fetchone()
 
-            return {
-                "project_id": str(id),
-                "members_count": members_count,
-                "tasks_count": tasks_count,
-                "answers_count": answers_count
-            }
+                if not row:
+                    raise adapter_errors.ProjectNotFoundError(
+                        f"Project with id {id} not found"
+                    )
+
+                members_count = row[0] if row[0] is not None else 0
+                tasks_count = row[1] if row[1] is not None else 0
+                answers_count = row[2] if row[2] is not None else 0
+
+                return {
+                    "project_id": str(id),
+                    "members_count": members_count,
+                    "tasks_count": tasks_count,
+                    "answers_count": answers_count
+                }
 
     async def update_project(self, project: Project) -> None:
+        """
+        Update an existing project's information.
+
+        Args:
+            project: Project object with updated data.
+
+        Raises:
+            ProjectNotFoundError: If no project exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 now = datetime.now(timezone.utc)
@@ -175,44 +251,66 @@ class ProjectPostgresRepository:
                         )
 
     async def get_projects(self, ids: list[UUID]) -> list[dict]:
+        """
+        Retrieve multiple projects by their IDs.
+
+        Args:
+            ids: List of project UUIDs to retrieve.
+
+        Returns:
+            List of dictionaries containing project details with tags.
+        """
         async with self._pool.connection() as conn:
-            result = await conn.execute(
-                ProjectQueries.SELECT_PROJECTS_BY_IDS,
-                (ids,)
-            )
-
-            rows = await result.fetchall()
-
-            projects = []
-            for row in rows:
-                tags_result = await conn.execute(
-                    ProjectQueries.SELECT_PROJECT_TAGS,
-                    (row[0],)
+            async with conn.transaction():
+                result = await conn.execute(
+                    ProjectQueries.SELECT_PROJECTS_BY_IDS,
+                    (ids,)
                 )
-                tags_rows = await tags_result.fetchall()
 
-                tags = [
-                    Tag(tag_id=tag_row[0], name=tag_row[1],
-                        quantity_count=tag_row[2])
-                    for tag_row in tags_rows
-                ]
+                rows = await result.fetchall()
 
-                projects.append({
-                    "id": row[0],
-                    "label": row[1],
-                    "short_description": row[2],
-                    "description": row[3],
-                    "creator_id": row[4],
-                    "creator": row[5],
-                    "status": ProjectStatusEnum(row[6]),
-                    "created_at": row[7],
-                    "updated_at": row[8],
-                    "tags": tags
-                })
+                projects = []
+                for row in rows:
+                    tags_result = await conn.execute(
+                        ProjectQueries.SELECT_PROJECT_TAGS,
+                        (row[0],)
+                    )
+                    tags_rows = await tags_result.fetchall()
 
-            return projects
+                    tags = [
+                        Tag(tag_id=tag_row[0], name=tag_row[1],
+                            quantity_count=tag_row[2])
+                        for tag_row in tags_rows
+                    ]
+
+                    projects.append({
+                        "id": row[0],
+                        "label": row[1],
+                        "short_description": row[2],
+                        "description": row[3],
+                        "creator_id": row[4],
+                        "creator": row[5],
+                        "status": ProjectStatusEnum(row[6]),
+                        "created_at": row[7],
+                        "updated_at": row[8],
+                        "tags": tags
+                    })
+
+                return projects
 
     async def create_task(self, task: Task) -> UUID:
+        """
+        Create a new task in the database.
+
+        Args:
+            task: Task object containing the task data.
+
+        Returns:
+            UUID of the newly created task.
+
+        Raises:
+            TaskAlreadyExistsError: If a task with the same ID already exists.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 task_id = task.task_id or uuid4()
@@ -242,6 +340,15 @@ class ProjectPostgresRepository:
                 return task_id
 
     async def update_task(self, task: Task) -> None:
+        """
+        Update an existing task's information.
+
+        Args:
+            task: Task object with updated data.
+
+        Raises:
+            TaskNotFoundError: If no task exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 task_id = task.task_id
@@ -268,6 +375,18 @@ class ProjectPostgresRepository:
                     )
 
     async def get_task(self, id: UUID) -> dict:
+        """
+        Retrieve detailed information about a specific task.
+
+        Args:
+            id: UUID of the task to retrieve.
+
+        Returns:
+            Dictionary containing task details including creator name.
+
+        Raises:
+            TaskNotFoundError: If no task exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -296,6 +415,15 @@ class ProjectPostgresRepository:
                 }
 
     async def increment_post_answer(self, id: UUID) -> None:
+        """
+        Increment the comments/answers count for a post.
+
+        Args:
+            id: UUID of the post to update.
+
+        Raises:
+            PostNotFoundError: If no post exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -310,6 +438,15 @@ class ProjectPostgresRepository:
                     )
 
     async def decrement_post_answer(self, id: UUID) -> None:
+        """
+        Decrement the comments/answers count for a post.
+
+        Args:
+            id: UUID of the post to update.
+
+        Raises:
+            PostNotFoundError: If no post exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -324,6 +461,15 @@ class ProjectPostgresRepository:
                     )
 
     async def increment_task_answer(self, id: UUID) -> None:
+        """
+        Increment the answer count for a task.
+
+        Args:
+            id: UUID of the task to update.
+
+        Raises:
+            PostNotFoundError: If no task exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -333,11 +479,20 @@ class ProjectPostgresRepository:
 
                 updated_id = await result.fetchone()
                 if not updated_id:
-                    raise adapter_errors.PostNotFoundError(
+                    raise adapter_errors.TaskNotFoundError(
                         f"Task with id {id} doesn't exist"
                     )
 
     async def decrement_task_answer(self, id: UUID) -> None:
+        """
+        Decrement the answer count for a task.
+
+        Args:
+            id: UUID of the task to update.
+
+        Raises:
+            PostNotFoundError: If no task exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -347,11 +502,23 @@ class ProjectPostgresRepository:
 
                 updated_id = await result.fetchone()
                 if not updated_id:
-                    raise adapter_errors.PostNotFoundError(
+                    raise adapter_errors.TaskNotFoundError(
                         f"Task with id {id} doesn't exist"
                     )
 
     async def create_post(self, post: Post) -> UUID:
+        """
+        Create a new post in the database.
+
+        Args:
+            post: Post object containing the post data.
+
+        Returns:
+            UUID of the newly created post.
+
+        Raises:
+            PostAlreadyExistsError: If a post with the same ID already exists.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 post_id = post.post_id or uuid4()
@@ -380,6 +547,15 @@ class ProjectPostgresRepository:
                 return post_id
 
     async def update_post(self, post: Post) -> None:
+        """
+        Update an existing post's information.
+
+        Args:
+            post: Post object with updated data.
+
+        Raises:
+            TaskNotFoundError: If no post exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 post_id = post.post_id
@@ -400,11 +576,20 @@ class ProjectPostgresRepository:
 
                 row = await result.fetchone()
                 if not row:
-                    raise adapter_errors.TaskNotFoundError(
-                        f"Task with id {post_id} not found"
+                    raise adapter_errors.PostNotFoundError(
+                        f"Post with id {post_id} not found"
                     )
 
     async def delete_post(self, id: UUID) -> None:
+        """
+        Delete a post from the database.
+
+        Args:
+            id: UUID of the post to delete.
+
+        Raises:
+            PostNotFoundError: If no post exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -412,13 +597,25 @@ class ProjectPostgresRepository:
                     (id,)
                 )
 
-                delete_id = result.fetchone()
+                delete_id = await result.fetchone()
                 if not delete_id:
                     raise adapter_errors.PostNotFoundError(
                         f"Post with id {id} doesn't exist"
                     )
 
     async def get_post(self, id: UUID) -> dict:
+        """
+        Retrieve detailed information about a specific post.
+
+        Args:
+            id: UUID of the post to retrieve.
+
+        Returns:
+            Dictionary containing post details including creator name.
+
+        Raises:
+            PostNotFoundError: If no post exists with the given ID.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -445,8 +642,17 @@ class ProjectPostgresRepository:
                     "updated_at": rows[0][9]
                 }
 
-    async def get_user_memberships(
-            self, user_id: UUID) -> list[list[dict]]:
+    async def get_user_memberships(self, user_id: UUID) -> list[list[dict]]:
+        """
+        Get all project memberships for a user, separated by role.
+
+        Args:
+            user_id: UUID of the user.
+
+        Returns:
+            List containing two lists: [scientist_projects, volunteer_projects].
+            Each project contains basic project information and the user's role.
+        """
         async with self._pool.connection() as conn:
             result = await conn.execute(
                 MembershipQueries.SELECT_USER_MEMBERSHIPS,
@@ -478,6 +684,13 @@ class ProjectPostgresRepository:
             return [scientist_projects, volunteer_projects]
 
     async def add_member(self, project_id: UUID, user: DenormUser) -> None:
+        """
+        Add a user as a member to a project with specified role.
+
+        Args:
+            project_id: UUID of the project.
+            user: DenormUser object containing user ID and role.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 await conn.execute(
@@ -486,6 +699,16 @@ class ProjectPostgresRepository:
                 )
 
     async def remove_member(self, project_id: UUID, user_id: UUID) -> None:
+        """
+        Remove a user from a project membership.
+
+        Args:
+            project_id: UUID of the project.
+            user_id: UUID of the user to remove.
+
+        Raises:
+            UserNotFoundError: If the user is not a member of the project.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -505,6 +728,18 @@ class ProjectPostgresRepository:
         limit: int = 20,
         cursor: Optional[datetime] = None
     ) -> list[dict]:
+        """
+        Get paginated list of publications (posts and tasks) for a project.
+
+        Args:
+            project_id: UUID of the project.
+            limit: Maximum number of publications to return (default: 20).
+            cursor: Optional datetime cursor for pagination (returns older items).
+
+        Returns:
+            List of dictionaries containing publication details including type
+            (post or task), status, and answers count, ordered by creation date.
+        """
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
@@ -536,8 +771,25 @@ class ProjectPostgresRepository:
                 return publications
 
     async def upsert_denorm_user(self, user_id: UUID, data: dict) -> None:
+        """
+        Insert or update a denormalized user record.
+
+        Dynamically builds an INSERT ... ON CONFLICT UPDATE query based on
+        the provided data fields. Ensures avatar_url is always present.
+
+        Args:
+            user_id: UUID of the user.
+            data: Dictionary of user fields to upsert (e.g., name, email, avatar_url).
+
+        Raises:
+            Exception: If database operation fails, logs error and re-raises.
+        """
         logger.info(
             f"Repository.upsert_denorm_user called - user_id: {user_id}, data: {data}")
+
+        unknown = set(data.keys()) - _ALLOWED_DENORM_USER_COLUMNS
+        if unknown:
+            raise ValueError(f"Unknown columns for denorm_user: {unknown}")
 
         if not data:
             data = {}

@@ -7,10 +7,29 @@ from loguru import logger
 
 
 class KafkaProducerClient:
+    """Client for producing Kafka events for project, post, and task operations."""
+
     def __init__(self, producer: AIOKafkaProducer) -> None:
+        """
+        Initialize the Kafka producer client.
+
+        Args:
+            producer: AIOKafkaProducer instance for sending messages to Kafka topics.
+        """
         self._producer = producer
 
     async def _send_event(self, topic: str, key: str, value: dict) -> None:
+        """
+        Internal method to send an event to a Kafka topic.
+
+        Args:
+            topic: Kafka topic name to send the event to.
+            key: Message key used for partitioning.
+            value: Dictionary containing the event data to be serialized as JSON.
+
+        Raises:
+            Exception: If sending the event fails, the exception is logged and re-raised.
+        """
         try:
             await self._producer.send(
                 topic=topic,
@@ -23,6 +42,12 @@ class KafkaProducerClient:
             raise
 
     async def send_create_project(self, project: Project) -> None:
+        """
+        Send a project.created event when a new project is created.
+
+        Args:
+            project: Project object containing the project details.
+        """
         await self._send_event(
             topic="project.created",
             key=str(project.id),
@@ -38,6 +63,12 @@ class KafkaProducerClient:
         )
 
     async def send_update_project(self, project: Project) -> None:
+        """
+        Send a project.updated event when a project is modified.
+
+        Args:
+            project: Project object containing the updated project details.
+        """
         await self._send_event(
             topic="project.updated",
             key=str(project.id),
@@ -53,6 +84,12 @@ class KafkaProducerClient:
         )
 
     async def send_create_post(self, post: Post) -> None:
+        """
+        Send a post.created event when a new post is created.
+
+        Args:
+            post: Post object containing the post details.
+        """
         await self._send_event(
             topic="post.created",
             key=str(post.post_id),
@@ -69,6 +106,12 @@ class KafkaProducerClient:
         )
 
     async def send_update_post(self, post: Post) -> None:
+        """
+        Send a post.updated event when a post is modified.
+
+        Args:
+            post: Post object containing the updated post details.
+        """
         await self._send_event(
             topic="post.updated",
             key=str(post.post_id),
@@ -85,6 +128,12 @@ class KafkaProducerClient:
         )
 
     async def send_delete_post(self, post_id: UUID) -> None:
+        """
+        Send a post.deleted event when a post is deleted.
+
+        Args:
+            post_id: UUID of the post being deleted.
+        """
         await self._send_event(
             topic="post.deleted",
             key=str(post_id),
@@ -96,6 +145,12 @@ class KafkaProducerClient:
         )
 
     async def send_create_task(self, task: Task) -> None:
+        """
+        Send a task.created event when a new task is created.
+
+        Args:
+            task: Task object containing the task details.
+        """
         await self._send_event(
             topic="task.created",
             key=str(task.task_id),
@@ -114,6 +169,12 @@ class KafkaProducerClient:
         )
 
     async def send_update_task(self, task: Task) -> None:
+        """
+        Send a task.updated event when a task is modified.
+
+        Args:
+            task: Task object containing the updated task details.
+        """
         await self._send_event(
             topic="task.updated",
             key=str(task.task_id),
@@ -132,6 +193,12 @@ class KafkaProducerClient:
         )
 
     async def send_delete_task(self, task_id: UUID) -> None:
+        """
+        Send a task.deleted event when a task is deleted.
+
+        Args:
+            task_id: UUID of the task being deleted.
+        """
         await self._send_event(
             topic="task.deleted",
             key=str(task_id),
