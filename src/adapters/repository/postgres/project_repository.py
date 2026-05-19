@@ -7,6 +7,14 @@ from psycopg import errors as psycopg_errors
 import src.adapters.repository.errors as adapter_errors
 from loguru import logger
 
+from src.adapters.repository.postgres.queries import (
+    TagQueries,
+    ProjectQueries,
+    TaskQueries,
+    PostQueries,
+    MembershipQueries,
+)
+
 
 class ProjectPostgresRepository:
     def __init__(self, pool: psycopg_pool.AsyncConnectionPool) -> None:
@@ -16,12 +24,7 @@ class ProjectPostgresRepository:
         tag_id = tag.tag_id or uuid4()
 
         await conn.execute(
-            """
-            INSERT INTO tags (id, name, count)
-            VALUES (%s, %s, %s)
-            ON CONFLICT (name) DO UPDATE SET
-                count = tags.count + 1
-            """,
+            TagQueries.UPSERT_TAG,
             (
                 tag_id,
                 tag.name,
@@ -30,7 +33,7 @@ class ProjectPostgresRepository:
         )
 
         result = await conn.execute(
-            "SELECT id FROM tags WHERE name = %s",
+            TagQueries.SELECT_TAG_ID_BY_NAME,
             (tag.name,)
         )
         row = await result.fetchone()
@@ -44,12 +47,7 @@ class ProjectPostgresRepository:
 
                 try:
                     await conn.execute(
-                        """
-                        INSERT INTO project (
-                            id, label, short_description, description,
-                            creator_id, status, created_at, updated_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        """,
+                        ProjectQueries.INSERT_PROJECT,
                         (
                             project_id,
                             project.label,
@@ -71,14 +69,8 @@ class ProjectPostgresRepository:
                         tag_id = await self._upsert_tag(conn, tag)
 
                         await conn.execute(
-                            """
-                            INSERT INTO project_tag_connection (project_id, tag_id)
-                            VALUES (%s, %s)
-                            ON CONFLICT (project_id, tag_id) DO NOTHING
-                            """,
-                            (
-                                project_id, tag_id
-                            )
+                            ProjectQueries.INSERT_PROJECT_TAG_CONNECTION,
+                            (project_id, tag_id)
                         )
 
                 return project_id
@@ -87,13 +79,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                    SELECT p.id, p.label, p.description, p.creator_id,
-                        du.name AS creator, p.status, p.created_at
-                    FROM project p
-                    LEFT JOIN denorm_user du ON du.id = p.creator_id
-                    WHERE p.id = %s AND p.status != 'DELETED'
-                    """,
+                    ProjectQueries.SELECT_PROJECT_INFO,
                     (id,)
                 )
 
@@ -105,12 +91,7 @@ class ProjectPostgresRepository:
                     )
 
                 tags_result = await conn.execute(
-                    """
-                    SELECT t.id, t.name, t.count
-                    FROM tags t
-                    JOIN project_tag_connection ptc ON ptc.tag_id = t.id
-                    WHERE ptc.project_id = %s
-                    """,
+                    ProjectQueries.SELECT_PROJECT_TAGS,
                     (id,)
                 )
                 tags_rows = await tags_result.fetchall()
@@ -135,21 +116,7 @@ class ProjectPostgresRepository:
     async def get_project_statistics(self, id: UUID) -> dict:
         async with self._pool.connection() as conn:
             result = await conn.execute(
-                """
-                SELECT
-                    COUNT(DISTINCT puc.user_id) as members_count,
-                    COUNT(t.id) as tasks_count,
-                    COALESCE(SUM(t.answer_count), 0) as total_answers_count
-                FROM project p
-                LEFT JOIN project_user_connection puc
-                    ON puc.project_id = p.id
-                LEFT JOIN task t
-                    ON t.project_id = p.id
-                    AND t.status != 'DELETED'
-                WHERE p.id = %s
-                    AND p.status != 'DELETED'
-                GROUP BY p.id
-                """,
+                ProjectQueries.SELECT_PROJECT_STATISTICS,
                 (id,)
             )
 
@@ -177,16 +144,7 @@ class ProjectPostgresRepository:
                 now = datetime.now(timezone.utc)
 
                 result = await conn.execute(
-                    """
-                    UPDATE project
-                    SET label = %s,
-                        short_description = %s,
-                        description = %s,
-                        updated_at = %s,
-                        status = %s
-                    WHERE id = %s
-                    RETURNING id
-                    """,
+                    ProjectQueries.UPDATE_PROJECT,
                     (
                         project.label,
                         project.short_description,
@@ -205,33 +163,21 @@ class ProjectPostgresRepository:
 
                 if project.tags is not None:
                     await conn.execute(
-                        "DELETE FROM project_tag_connection WHERE project_id = %s",
+                        ProjectQueries.DELETE_PROJECT_TAG_CONNECTIONS,
                         (project.id,)
                     )
 
                     for tag in project.tags:
                         tag_id = await self._upsert_tag(conn, tag)
                         await conn.execute(
-                            """
-                            INSERT INTO project_tag_connection (project_id, tag_id)
-                            VALUES (%s, %s)
-                            """,
-                            (
-                                project.id,
-                                tag_id
-                            )
+                            ProjectQueries.INSERT_PROJECT_TAG_CONNECTION_NO_CONFLICT,
+                            (project.id, tag_id)
                         )
 
     async def get_projects(self, ids: list[UUID]) -> list[dict]:
         async with self._pool.connection() as conn:
             result = await conn.execute(
-                """
-                SELECT p.id, p.label, p.short_description, p.description,
-                p.creator_id, du.name AS creator, p.status, p.created_at, p.updated_at
-                FROM project p
-                LEFT JOIN denorm_user du ON du.id = p.creator_id
-                WHERE p.id = ANY(%s) AND p.status != 'DELETED'
-                """,
+                ProjectQueries.SELECT_PROJECTS_BY_IDS,
                 (ids,)
             )
 
@@ -240,12 +186,7 @@ class ProjectPostgresRepository:
             projects = []
             for row in rows:
                 tags_result = await conn.execute(
-                    """
-                    SELECT t.id, t.name, t.count
-                    FROM tags t
-                    JOIN project_tag_connection ptc ON ptc.tag_id = t.id
-                    WHERE ptc.project_id = %s
-                    """,
+                    ProjectQueries.SELECT_PROJECT_TAGS,
                     (row[0],)
                 )
                 tags_rows = await tags_result.fetchall()
@@ -279,14 +220,7 @@ class ProjectPostgresRepository:
 
                 try:
                     await conn.execute(
-                        """
-                        INSERT INTO task (
-                            id, project_id, label, creator_id,
-                            short_description, description,
-                            created_at, updated_at,
-                            answer_count, status
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """,
+                        TaskQueries.INSERT_TASK,
                         (
                             task_id,
                             task.project_id,
@@ -314,14 +248,7 @@ class ProjectPostgresRepository:
                 now = datetime.now(timezone.utc)
 
                 result = await conn.execute(
-                    """
-                        UPDATE task
-                        SET project_id = %s, label = %s, creator_id = %s,
-                            short_description = %s, description = %s,
-                            updated_at = %s, status = %s
-                        WHERE id = %s
-                        RETURNING id
-                        """,
+                    TaskQueries.UPDATE_TASK,
                     (
                         task.project_id,
                         task.label,
@@ -344,14 +271,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                    SELECT t.id, t.project_id, t.label, t.short_description,
-                        t.description, t.creator_id, du.name AS creator,
-                        t.status, t.created_at, t.updated_at, t.answer_count
-                    FROM task t
-                    LEFT JOIN denorm_user du ON du.id = t.creator_id
-                    WHERE t.id = %s AND t.status != 'DELETED'
-                    """,
+                    TaskQueries.SELECT_TASK,
                     (id,)
                 )
 
@@ -379,13 +299,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                        UPDATE post
-                        SET comments_count = comments_count + 1,
-                            updated_at = NOW()
-                        WHERE id = %s
-                        RETURNING id
-                        """,
+                    PostQueries.INCREMENT_POST_ANSWER,
                     (id,)
                 )
 
@@ -399,13 +313,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                        UPDATE post
-                        SET comments_count = comments_count - 1,
-                            updated_at = NOW()
-                        WHERE id = %s AND comments_count > 0
-                        RETURNING id
-                        """,
+                    PostQueries.DECREMENT_POST_ANSWER,
                     (id,)
                 )
 
@@ -419,13 +327,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                        UPDATE task
-                        SET answer_count = answer_count + 1,
-                            updated_at = NOW()
-                        WHERE id = %s AND status != 'DELETED'
-                        RETURNING id
-                        """,
+                    TaskQueries.INCREMENT_TASK_ANSWER,
                     (id,)
                 )
 
@@ -439,13 +341,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                        UPDATE task
-                        SET answer_count = answer_count - 1,
-                            updated_at = NOW()
-                        WHERE id = %s AND status != 'DELETED' AND answer_count > 0
-                        RETURNING id
-                        """,
+                    TaskQueries.DECREMENT_TASK_ANSWER,
                     (id,)
                 )
 
@@ -463,13 +359,7 @@ class ProjectPostgresRepository:
 
                 try:
                     await conn.execute(
-                        """
-                        INSERT INTO post (
-                            id, project_id, label, creator_id,
-                            short_description, description,
-                            comments_count, created_at, updated_at
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """,
+                        PostQueries.INSERT_POST,
                         (
                             post_id,
                             post.project_id,
@@ -496,14 +386,7 @@ class ProjectPostgresRepository:
                 now = datetime.now(timezone.utc)
 
                 result = await conn.execute(
-                    """
-                        UPDATE post
-                        SET project_id = %s, label = %s, creator_id = %s,
-                            short_description = %s, description = %s,
-                            updated_at = %s
-                        WHERE id = %s
-                        RETURNING id
-                        """,
+                    PostQueries.UPDATE_POST,
                     (
                         post.project_id,
                         post.label,
@@ -524,13 +407,8 @@ class ProjectPostgresRepository:
     async def delete_post(self, id: UUID) -> None:
         async with self._pool.connection() as conn:
             async with conn.transaction():
-
                 result = await conn.execute(
-                    """
-                        DELETE FROM post
-                        WHERE id = %s
-                        RETURNING id
-                        """,
+                    PostQueries.DELETE_POST,
                     (id,)
                 )
 
@@ -544,14 +422,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                    SELECT t.id, t.project_id, t.label, t.creator_id,
-                    du.name AS creator_name, t.short_description, t.description,
-                    t.comments_count, t.created_at, t.updated_at
-                    FROM post t
-                    LEFT JOIN denorm_user du ON du.id = t.creator_id
-                    WHERE t.id = %s
-                    """,
+                    PostQueries.SELECT_POST,
                     (id,)
                 )
 
@@ -578,22 +449,7 @@ class ProjectPostgresRepository:
             self, user_id: UUID) -> list[list[dict]]:
         async with self._pool.connection() as conn:
             result = await conn.execute(
-                """
-                SELECT
-                p.id,
-                p.label,
-                p.short_description,
-                p.status,
-                p.created_at,
-                puc.role,
-                u.name as creator_name
-                FROM project_user_connection puc
-                JOIN project p ON p.id=puc.project_id
-                LEFT JOIN denorm_user u ON u.id=p.creator_id
-                WHERE puc.user_id= %s
-                AND p.status != 'DELETED'
-                AND puc.role != 'DELETED'
-                """,
+                MembershipQueries.SELECT_USER_MEMBERSHIPS,
                 (user_id,)
             )
 
@@ -625,12 +481,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 await conn.execute(
-                    """
-                    INSERT INTO project_user_connection (project_id, user_id, role)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (project_id, user_id) DO UPDATE
-                    SET role = EXCLUDED.role
-                    """,
+                    MembershipQueries.UPSERT_MEMBER,
                     (project_id, user.id, user.role)
                 )
 
@@ -638,11 +489,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                    DELETE FROM project_user_connection
-                    WHERE project_id = %s AND user_id = %s
-                    RETURNING project_id, user_id
-                    """,
+                    MembershipQueries.DELETE_MEMBER,
                     (project_id, user_id)
                 )
 
@@ -661,45 +508,7 @@ class ProjectPostgresRepository:
         async with self._pool.connection() as conn:
             async with conn.transaction():
                 result = await conn.execute(
-                    """
-                    (
-                        SELECT
-                            p.id as id,
-                            p.project_id,
-                            p.label,
-                            p.short_description,
-                            p.created_at,
-                            p.creator_id,
-                            du.name as creator_name,
-                            'post' as type,
-                            NULL as status,
-                            p.comments_count as answers_count
-                        FROM post p
-                        LEFT JOIN denorm_user du ON du.id = p.creator_id
-                        WHERE p.project_id = %s
-                            AND (%s::timestamptz IS NULL OR p.created_at < %s)
-                    )
-                    UNION ALL
-                    (
-                        SELECT
-                            t.id as id,
-                            t.project_id,
-                            t.label,
-                            t.short_description,
-                            t.created_at,
-                            t.creator_id,
-                            du.name as creator_name,
-                            'task' as type,
-                            t.status as status,
-                            t.answer_count as answers_count
-                        FROM task t
-                        LEFT JOIN denorm_user du ON du.id = t.creator_id
-                        WHERE t.project_id = %s
-                            AND (%s::timestamptz IS NULL OR t.created_at < %s)
-                    )
-                    ORDER BY created_at DESC
-                    LIMIT %s
-                    """,
+                    ProjectQueries.SELECT_PROJECT_PUBLICATIONS,
                     (
                         project_id, cursor, cursor,
                         project_id, cursor, cursor,
