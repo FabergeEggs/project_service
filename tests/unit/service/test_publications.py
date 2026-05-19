@@ -3,7 +3,7 @@ from uuid import uuid4
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 import pytest
-from src.services.project_service import ProjectService
+from src.services.project_service import ProjectService, ProjectStatusEnum
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
 
@@ -25,12 +25,11 @@ def make_publication(**kwargs):
     return default
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", "ACTIVE")
-    return MockProject()
+def make_project_mock(**kwargs) -> dict:
+    return {
+        "id": kwargs.get("id", uuid4()),
+        "status": kwargs.get("status", ProjectStatusEnum.ACTIVE),
+    }
 
 
 @pytest.fixture

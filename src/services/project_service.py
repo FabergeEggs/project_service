@@ -1,11 +1,3 @@
-"""
-Business logic service for project management.
-
-Handles project, task, post, and membership operations with validation,
-authorization checks, and event publishing. Acts as an intermediary between
-API layer and repository/kafka layers.
-"""
-
 from src.models.project import Project, Post, Task, DenormUser, ProjectStatusEnum
 from src.services.protocols import ProjectRepository, ProjectKafkaProducer
 import src.services.errors as project_errors
