@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 from src.services.project_service import ProjectService
 from src.api.http.dependencies import get_current_user, UserInfo
 from src.models.project import (
-    Project, Post, Task, Tag,
-    ProjectStatusEnum, TaskStatusEnum, ProjectRoleEnum
+    Project, Post, Task, Tag, DenormUser,
+    ProjectStatusEnum, TaskStatusEnum
 )
 from src.api.http.dto import (
-    ProjectDTO, ProjectInfoDTO, ProjectDetailDTO, ProjectCreateDTO, ProjectUpdateDTO,
+    ProjectDTO, ProjectInfoDTO, ProjectCreateDTO, ProjectUpdateDTO,
     ProjectStatsDTO, TaskDTO, TaskCreateDTO, TaskUpdateDTO,
     PostDTO, PostCreateDTO, PostUpdateDTO, TagDTO, DenormUserDTO, PublicationDTO,
     PublicationsResponse, MembershipProjectDTO, MembershipsDTO
@@ -185,22 +185,14 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+        except project_errors.ProjectDeletedError as e:
+            raise HTTPException(
+                status_code=status.HTTP_410_GONE, detail=str(e))
 
         if existing["creator_id"] != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Only the project creator can create tasks"
-            )
-
-        if existing["status"] == ProjectStatusEnum.DELETED:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot create tasks for a deleted project"
-            )
-        elif existing["status"] == ProjectStatusEnum.FINISHED:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot create tasks for a finished project"
             )
 
         task = Task(
@@ -221,16 +213,13 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             return {"id": task_id, "message": "Task created successfully"}
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT, detail=str(e)
-            )
+                status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
         except project_errors.ProjectDeletedError as e:
             raise HTTPException(
-                status_code=status.HTTP_410_GONE, detail=str(e)
-            )
+                status_code=status.HTTP_410_GONE, detail=str(e))
         except project_errors.ProjectFinishedError as e:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-            )
+                status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     @router.put("/{project_id}/task/{task_id}", response_model=dict)
     async def update_task(
@@ -483,8 +472,15 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 detail="Users can only add themselves as members to a project"
             )
 
+        user = DenormUser(
+            id=user_data.id,
+            role=user_data.role,
+            name=user_data.name,
+            avatar_link=user_data.avatar_link
+        )
+
         try:
-            await project_service.add_member(project_id, user_data)
+            await project_service.add_member(project_id, user)
             return {"message": "Member added successfully"}
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(

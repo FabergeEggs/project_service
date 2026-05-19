@@ -1,4 +1,4 @@
-from src.models.project import Project, Post, Task, DenormUser, TaskStatusEnum, ProjectStatusEnum, ProjectRoleEnum
+from src.models.project import Project, Post, Task, DenormUser, ProjectStatusEnum
 from src.services.protocols import ProjectRepository, ProjectKafkaProducer
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
@@ -17,7 +17,7 @@ class ProjectService():
         self._project_repository = project_repository
         self._kafka_producer = kafka_producer
 
-    async def _check_project_active(self, project_id: UUID) -> Project:
+    async def _check_project_active(self, project_id: UUID) -> dict:
         try:
             project = await self._project_repository.get_project_info(project_id)
         except adapter_errors.ProjectNotFoundError:
@@ -33,7 +33,7 @@ class ProjectService():
 
         return project
 
-    async def _check_project_accessible(self, project_id: UUID) -> Project:
+    async def _check_project_accessible(self, project_id: UUID) -> dict:
         try:
             project = await self._project_repository.get_project_info(project_id)
         except adapter_errors.ProjectNotFoundError:
@@ -90,16 +90,16 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
 
-    async def get_projects(self, ids: list[id]) -> list[dict]:
+    async def get_projects(self, ids: list[UUID]) -> list[dict]:
         try:
             projects = await self._project_repository.get_projects(ids)
 
             for project in projects:
                 if project["status"] == ProjectStatusEnum.DELETED:
                     raise project_errors.ProjectDeletedError(
-                        f"Project with ID {project['id']} is deleted.")
-
+                        f"Project with ID {project["id"]} is deleted.")
             return projects
+
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
@@ -129,13 +129,14 @@ class ProjectService():
             raise project_errors.TaskNotFoundError(
                 "Couldn't find task by given ID")
 
-    async def get_task(self, id: UUID) -> Task:
+    async def get_task(self, id: UUID) -> dict:
         try:
             task = await self._project_repository.get_task(id)
 
             await self._check_project_accessible(task["project_id"])
 
             return task
+
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 "Project of this task doesn't exist")
@@ -214,7 +215,7 @@ class ProjectService():
             raise project_errors.PostNotFoundError(
                 "Couldn't find post by given ID")
 
-    async def get_post(self, id: UUID) -> Post:
+    async def get_post(self, id: UUID) -> dict:
         try:
             post = await self._project_repository.get_post(id)
             await self._check_project_accessible(post["project_id"])

@@ -1,5 +1,4 @@
 # src/api/kafka/consumers/base_consumer.py
-import json
 import asyncio
 from abc import ABC, abstractmethod
 from aiokafka import AIOKafkaConsumer

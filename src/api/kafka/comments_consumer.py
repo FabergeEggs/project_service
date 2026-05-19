@@ -1,5 +1,4 @@
 import json
-import asyncio
 from uuid import UUID
 from aiokafka import AIOKafkaConsumer
 from src.services.project_service import ProjectService

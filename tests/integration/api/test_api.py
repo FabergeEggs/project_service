@@ -1,13 +1,7 @@
 import pytest
-from httpx import AsyncClient
-from fastapi import FastAPI
-from src.api.http.project_router import create_project_router
-from src.services.project_service import ProjectService
 import src.services.errors as project_errors
 
 from uuid import uuid4
-import pytest
-from unittest.mock import AsyncMock
 
 
 @pytest.mark.integration

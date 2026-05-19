@@ -1,10 +1,9 @@
-from uuid import UUID, uuid4
+from uuid import uuid4
 from unittest.mock import AsyncMock
 
 import pytest
 
-from datetime import datetime
-from src.models.project import DenormUser, ProjectRoleEnum, Project, ProjectStatusEnum, Tag
+from src.models.project import DenormUser, ProjectRoleEnum
 from src.services.project_service import ProjectService
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors

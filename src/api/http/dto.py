@@ -150,4 +150,6 @@ class MembershipsDTO(BaseModel):
 
 class DenormUserDTO(BaseModel):
     id: UUID
+    name: str = "unknown"
     role: ProjectRoleEnum
+    avatar_link: str = ""

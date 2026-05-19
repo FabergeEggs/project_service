@@ -12,7 +12,6 @@ from src.api.http.project_router import create_project_router
 from src.adapters.clients.kafka_producer import KafkaProducerClient
 from src.adapters.repository.postgres.project_repository import ProjectPostgresRepository
 from src.api.kafka.answer_consumer import AnswerKafkaConsumer
-from src.api.kafka.comments_consumer import CommentsKafkaConsumer
 from src.api.kafka.profile_consumer import ProfileKafkaConsumer
 from src.services.project_service import ProjectService
 from src.config import Settings
@@ -33,6 +32,7 @@ async def _run(settings: Settings) -> None:
 
     try:
         async with pool.connection() as conn:
+            await conn.execute("SELECT 1")
             logger.info("Postgres connected")
     except Exception as e:
         logger.error("Postgres connection failed: {}", e)
