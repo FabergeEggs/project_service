@@ -7,13 +7,39 @@ from loguru import logger
 
 
 class AnswerKafkaConsumer(BaseKafkaConsumer):
+    """
+    Consumer for answer events from the answer service.
+
+    Listens for answer creation and deletion events and updates the
+    corresponding task's answer count in the project service.
+    """
+
     def __init__(
         self, consumer: AIOKafkaConsumer, project_service: ProjectService
     ) -> None:
+        """
+        Initialize the answer Kafka consumer.
+
+        Args:
+            consumer: Configured AIOKafkaConsumer instance.
+            project_service: Service instance for updating task answer counts.
+        """
         super().__init__(consumer)
         self._project_service = project_service
 
     async def _handle_message(self, message):
+        """
+        Process an answer event from Kafka.
+
+        Expects events with structure:
+        {
+            "type": "answer.created" or "answer.deleted",
+            "task_id": "uuid-string"
+        }
+
+        Args:
+            message: Raw Kafka message containing the answer event.
+        """
         try:
             event = json.loads(message.value.decode('utf-8'))
             event_type = event.get("type")

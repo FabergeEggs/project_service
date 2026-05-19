@@ -32,7 +32,7 @@ class Tag:
 
 @dataclass
 class Project:
-    id: UUID
+    id: Optional[UUID]
     label: str
     creator_id: UUID
     short_description: str

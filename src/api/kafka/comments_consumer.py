@@ -7,11 +7,37 @@ from loguru import logger
 
 
 class CommentsKafkaConsumer(BaseKafkaConsumer):
+    """
+    Consumer for comment events from the comment service.
+
+    Listens for comment creation and deletion events and updates the
+    corresponding post's comment count in the project service.
+    """
+
     def __init__(self, consumer: AIOKafkaConsumer, project_service: ProjectService) -> None:
+        """
+        Initialize the comments Kafka consumer.
+
+        Args:
+            consumer: Configured AIOKafkaConsumer instance.
+            project_service: Service instance for updating post comment counts.
+        """
         super().__init__(consumer)
         self._project_service = project_service
 
     async def _handle_message(self, message):
+        """
+        Process a comment event from Kafka.
+
+        Expects events with structure:
+        {
+            "type": "comment.created" or "comment.deleted",
+            "post_id": "uuid-string"
+        }
+
+        Args:
+            message: Raw Kafka message containing the comment event.
+        """
         try:
             event = json.loads(message.value.decode('utf-8'))
             event_type = event.get("type")
