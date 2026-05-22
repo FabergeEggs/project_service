@@ -12,3 +12,5 @@ CREATE TABLE IF NOT EXISTS
         FOREIGN KEY (project_id) REFERENCES project (id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES denorm_user (id) ON DELETE CASCADE
     );
+
+CREATE INDEX IF NOT EXISTS idx_project_user_connection_user_id ON project_user_connection (user_id);

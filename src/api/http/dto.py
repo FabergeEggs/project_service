@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from uuid import UUID
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 from datetime import datetime
 from src.models.project import ProjectRoleEnum, ProjectStatusEnum, TaskStatusEnum
 
@@ -26,19 +26,16 @@ class TaskDTO(BaseModel):
 
 
 class TaskCreateDTO(BaseModel):
-    project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
 
 
 class TaskUpdateDTO(BaseModel):
-    task_id: Optional[UUID] = None
-    project_id: Optional[UUID] = None
-    label: Optional[str] = Field(None, min_length=3, max_length=255)
-    short_description: Optional[str] = Field(None, max_length=500)
-    description: Optional[str] = Field(None, max_length=5000)
-    status: Optional[TaskStatusEnum] = None
+    label: str = Field(..., min_length=3, max_length=255)
+    short_description: str = Field(..., max_length=500)
+    description: str = Field(..., max_length=5000)
+    status: TaskStatusEnum = Field(...)
 
 
 class PostDTO(BaseModel):
@@ -49,12 +46,12 @@ class PostDTO(BaseModel):
     creator: str
     short_description: str
     description: str
+    comments_count: int
     created_at: datetime
     updated_at: datetime
 
 
 class PostCreateDTO(BaseModel):
-    project_id: UUID
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
@@ -81,7 +78,8 @@ class ProjectDTO(BaseModel):
 
 
 class ProjectInfoDTO(BaseModel):
-    id: UUID
+    project_id: UUID
+    creator_id: UUID
     label: str
     creator: str
     description: str
@@ -117,8 +115,42 @@ class ProjectStatsDTO(BaseModel):
     answers_count: int
 
 
+class PublicationDTO(BaseModel):
+    id: UUID
+    project_id: UUID
+    label: str
+    short_description: str
+    created_at: datetime
+    creator_id: UUID
+    creator_name: str
+    type: Literal["post", "task"]
+    answers_count: int
+
+    status: Optional[TaskStatusEnum] = None
+
+
+class PublicationsResponse(BaseModel):
+    items: list[PublicationDTO]
+    next_cursor: Optional[str] = None
+    has_more: bool = False
+
+
+class MembershipProjectDTO(BaseModel):
+    project_id: UUID
+    label: str
+    short_description: str
+    created_at: datetime
+    status: ProjectStatusEnum
+    creator_name: str
+
+
+class MembershipsDTO(BaseModel):
+    scientist: list[MembershipProjectDTO]
+    volunteer: list[MembershipProjectDTO]
+
+
 class DenormUserDTO(BaseModel):
     id: UUID
-    name: str
+    name: str = "unknown"
     role: ProjectRoleEnum
-    avatar_link: str
+    avatar_link: str = ""

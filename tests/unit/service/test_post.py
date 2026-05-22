@@ -1,37 +1,48 @@
 from src.models.project import Post
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.services.project_service import ProjectService
+from src.services.project_service import ProjectService, ProjectStatusEnum
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
 
 
 def make_post(**kwargs) -> Post:
-    default = dict(
-        post_id=uuid4(),
-        project_id=uuid4(),
+    return Post(
+        post_id=kwargs.get("post_id", uuid4()),
+        project_id=kwargs.get("project_id", uuid4()),
         creator_id=uuid4(),
         label="Test Post",
-        creator="test_user",
         short_description="Short post description",
         description="Full detailed post description for testing",
+        comments_count=0,
         created_at=datetime.now(),
         updated_at=datetime.now(),
     )
-    default.update(kwargs)
-    return Post(**default)
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", "ACTIVE")
-    return MockProject()
+def make_post_dict(**kwargs) -> dict:
+    return {
+        "post_id": kwargs.get("post_id", uuid4()),
+        "project_id": kwargs.get("project_id", uuid4()),
+        "creator_id": uuid4(),
+        "label": "Test Post",
+        "short_description": "Short post description",
+        "description": "Full detailed post description for testing",
+        "comments_count": 0,
+        "created_at": datetime.now(),
+        "updated_at": datetime.now(),
+    }
+
+
+def make_project_mock(**kwargs) -> dict:
+    return {
+        "id": kwargs.get("id", uuid4()),
+        "status": kwargs.get("status", ProjectStatusEnum.ACTIVE),
+    }
 
 
 @pytest.fixture
@@ -149,8 +160,9 @@ class TestDeletePost:
     async def test_delete_post(self, service, repo, kafka):
         post_id = uuid4()
         post = make_post(post_id=post_id)
+        post_dict = make_post_dict(post_id=post_id, project_id=post.project_id)
         project = make_project_mock(id=post.project_id)
-        repo.get_post.return_value = post
+        repo.get_post.return_value = post_dict
         repo.get_project_info.return_value = project
 
         await service.delete_post(post_id)
@@ -164,8 +176,9 @@ class TestDeletePost:
     async def test_delete_post_project_deleted(self, service, repo):
         post_id = uuid4()
         post = make_post(post_id=post_id)
+        post_dict = make_post_dict(post_id=post_id, project_id=post.project_id)
         project = make_project_mock(id=post.project_id, status="DELETED")
-        repo.get_post.return_value = post
+        repo.get_post.return_value = post_dict
         repo.get_project_info.return_value = project
 
         with pytest.raises(project_errors.ProjectDeletedError):
@@ -175,8 +188,9 @@ class TestDeletePost:
     async def test_delete_post_project_finished(self, service, repo):
         post_id = uuid4()
         post = make_post(post_id=post_id)
+        post_dict = make_post_dict(post_id=post_id, project_id=post.project_id)
         project = make_project_mock(id=post.project_id, status="FINISHED")
-        repo.get_post.return_value = post
+        repo.get_post.return_value = post_dict
         repo.get_project_info.return_value = project
 
         with pytest.raises(project_errors.ProjectFinishedError):
@@ -195,22 +209,27 @@ class TestDeletePost:
 class TestGetPost:
     @pytest.mark.asyncio
     async def test_get_post(self, service, repo):
-        post = make_post()
-        project = make_project_mock(id=post.project_id)
-        repo.get_post.return_value = post
+        project_id = uuid4()
+        post = make_post(project_id=project_id)
+        post_dict = make_post_dict(post_id=post.post_id, project_id=project_id)
+        project = make_project_mock(id=project_id)
+
+        repo.get_post.return_value = post_dict
         repo.get_project_info.return_value = project
 
         result = await service.get_post(post.post_id)
 
         repo.get_post.assert_awaited_once_with(post.post_id)
-        repo.get_project_info.assert_awaited_once_with(post.project_id)
-        assert result == post
+        repo.get_project_info.assert_awaited_once_with(project_id)
+        assert result == post_dict
 
     @pytest.mark.asyncio
     async def test_get_post_project_deleted(self, service, repo):
         post = make_post()
+        post_dict = make_post_dict(
+            post_id=post.post_id, project_id=post.project_id)
         project = make_project_mock(id=post.project_id, status="DELETED")
-        repo.get_post.return_value = post
+        repo.get_post.return_value = post_dict
         repo.get_project_info.return_value = project
 
         with pytest.raises(project_errors.ProjectDeletedError):
@@ -223,3 +242,44 @@ class TestGetPost:
 
         with pytest.raises(project_errors.PostNotFoundError):
             await service.get_post(post_id)
+
+
+@pytest.mark.unit
+class TestUpdatePostAnswers:
+    @pytest.mark.asyncio
+    async def test_increment_post_answer(self, service, repo):
+        post_id = uuid4()
+
+        await service.increment_post_answer(post_id)
+
+        repo.increment_post_answer.assert_awaited_once_with(post_id)
+
+    @pytest.mark.asyncio
+    async def test_increment_post_answer_not_found(self, service, repo):
+        post_id = uuid4()
+        repo.increment_post_answer.side_effect = adapter_errors.PostNotFoundError
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.increment_post_answer(post_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_decrement_post_answer(self, service, repo):
+        post_id = uuid4()
+
+        await service.decrement_post_answer(post_id)
+
+        repo.decrement_post_answer.assert_awaited_once_with(post_id)
+
+    @pytest.mark.asyncio
+    async def test_decrement_post_answer_not_found(self, service, repo):
+        post_id = uuid4()
+        repo.decrement_post_answer.side_effect = adapter_errors.PostNotFoundError
+
+        with patch("src.services.project_service.logger") as mock_logger:
+            await service.decrement_post_answer(post_id)
+
+            mock_logger.warning.assert_called_once()
+            assert "doesn't exist" in mock_logger.warning.call_args[0][0]

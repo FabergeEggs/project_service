@@ -1,30 +1,32 @@
 services:
-    redpanda:
-        image: docker.redpanda.com/redpandadata/redpanda:latest
-        container_name: redpanda
-        command:
-            - redpanda
-            - start
-            - --overprovisioned
-            - --smp 1
-            - --memory 1G
-            - --reserve-memory 0M
-            - --check=false
-        ports:
-            - "9092:9092" # Kafka API
-            - "9644:9644" # Admin API
-        volumes:
-            - redpanda_data:/var/lib/redpanda/data
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: redpanda_project
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://localhost:9093
+    ports:
+      - "9093:9092" # Kafka API
+      - "9645:9644" # Admin API
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
 
-    postgres:
-        image: postgres:15
-        environment:
-            POSTGRES_USER: user
-            POSTGRES_PASSWORD: password
-            POSTGRES_DB: project_db
-        ports:
-            - "5432:5432"
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: project_db
+    ports:
+      - "5432:5432"
 
 volumes:
-    redpanda_data:
-    neo4j_data:
+  redpanda_data:
+  neo4j_data:

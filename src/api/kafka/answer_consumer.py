@@ -1,30 +1,45 @@
 import json
-import asyncio
 from uuid import UUID
 from aiokafka import AIOKafkaConsumer
 from src.services.project_service import ProjectService
+from src.api.kafka.base_consumer import BaseKafkaConsumer
 from loguru import logger
 
 
-class ProjectKafkaConsumer:
+class AnswerKafkaConsumer(BaseKafkaConsumer):
+    """
+    Consumer for answer events from the answer service.
+
+    Listens for answer creation and deletion events and updates the
+    corresponding task's answer count in the project service.
+    """
+
     def __init__(
         self, consumer: AIOKafkaConsumer, project_service: ProjectService
     ) -> None:
-        self._consumer = consumer
+        """
+        Initialize the answer Kafka consumer.
+
+        Args:
+            consumer: Configured AIOKafkaConsumer instance.
+            project_service: Service instance for updating task answer counts.
+        """
+        super().__init__(consumer)
         self._project_service = project_service
 
-    async def start(self) -> None:
-        await self._consumer.start()
-        logger.info("Kafka consumer started")
-        try:
-            async for message in self._consumer:
-                await self._handle_message(message)
-        except asyncio.CancelledError:
-            logger.info("Answers Kafka consumer stopped")
-        finally:
-            await self._consumer.stop()
-
     async def _handle_message(self, message):
+        """
+        Process an answer event from Kafka.
+
+        Expects events with structure:
+        {
+            "type": "answer.created" or "answer.deleted",
+            "task_id": "uuid-string"
+        }
+
+        Args:
+            message: Raw Kafka message containing the answer event.
+        """
         try:
             event = json.loads(message.value.decode('utf-8'))
             event_type = event.get("type")
@@ -37,7 +52,7 @@ class ProjectKafkaConsumer:
             task_id = UUID(task_id_str)
 
             if event_type == "answer.created":
-                await self._project_service.increment_task_answers(task_id)
+                await self._project_service.increment_task_answer(task_id)
             elif event_type == "answer.deleted":
                 await self._project_service.decrement_task_answer(task_id)
             else:

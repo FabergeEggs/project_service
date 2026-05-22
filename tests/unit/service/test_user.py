@@ -3,30 +3,26 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from datetime import datetime
-from src.models.project import DenormUser, ProjectRoleEnum, Project, ProjectStatusEnum, Tag
+from src.models.project import DenormUser, ProjectRoleEnum, ProjectStatusEnum
 from src.services.project_service import ProjectService
 import src.services.errors as project_errors
 import src.adapters.repository.errors as adapter_errors
 
 
-def make_denorm_user(**kwargs) -> DenormUser:
-    default = dict(
+def make_denorm_user(role: ProjectRoleEnum = ProjectRoleEnum.VOLUNTEER) -> DenormUser:
+    return DenormUser(
         id=uuid4(),
         name="Test User",
-        role=ProjectRoleEnum.VOLUNTEER,
+        role=role,
         avatar_link="https://example.com/avatar.jpg"
     )
-    default.update(kwargs)
-    return DenormUser(**default)
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", "ACTIVE")
-    return MockProject()
+def make_project_mock(**kwargs) -> dict:
+    return {
+        "id": kwargs.get("id", uuid4()),
+        "status": kwargs.get("status", ProjectStatusEnum.ACTIVE),
+    }
 
 
 @pytest.fixture
@@ -176,3 +172,24 @@ class TestRemoveMember:
 
         with pytest.raises(project_errors.UserNotFoundError):
             await service.remove_member(project_id, user_id)
+
+
+@pytest.mark.unit
+class TestUpsertDenormUser:
+    @pytest.mark.asyncio
+    async def test_upsert_denorm_user_success(self, service, repo):
+        user_id = uuid4()
+        data = {"name": "Test", "avatar_url": "https://example.com/avatar.jpg"}
+
+        await service.upsert_denorm_user(user_id, data)
+
+        repo.upsert_denorm_user.assert_awaited_once_with(user_id, data)
+
+    @pytest.mark.asyncio
+    async def test_upsert_denorm_user_not_found(self, service, repo):
+        user_id = uuid4()
+        data = {"name": "Test"}
+        repo.upsert_denorm_user.side_effect = adapter_errors.UserNotFoundError
+
+        with pytest.raises(project_errors.UserNotFoundError):
+            await service.upsert_denorm_user(user_id, data)

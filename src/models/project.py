@@ -1,8 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID
+from typing import Optional
 
 
 class ProjectStatusEnum(str, Enum):
@@ -11,7 +11,6 @@ class ProjectStatusEnum(str, Enum):
     DELETED = "DELETED"
 
 
-# !!! DELETED should be deleted
 class TaskStatusEnum(str, Enum):
     ACTIVE = "ACTIVE"
     FINISHED = "FINISHED"
@@ -26,17 +25,16 @@ class ProjectRoleEnum(str, Enum):
 
 @dataclass
 class Tag:
-    tag_id: UUID
+    tag_id: Optional[UUID]
     name: str
     quantity_count: int = 0
 
 
 @dataclass
 class Project:
-    id: UUID
+    id: Optional[UUID]
     label: str
     creator_id: UUID
-    creator: str
     short_description: str
     description: str
     tags: list[Tag]
@@ -47,24 +45,23 @@ class Project:
 
 @dataclass
 class Post:
-    post_id: UUID
+    post_id: Optional[UUID]
     project_id: UUID
     creator_id: UUID
     label: str
-    creator: str
     short_description: str
     description: str
+    comments_count: int
     created_at: datetime
     updated_at: datetime
 
 
 @dataclass
 class Task:
-    task_id: UUID
+    task_id: Optional[UUID]
     project_id: UUID
     creator_id: UUID
     label: str
-    creator: str
     short_description: str
     description: str
     created_at: datetime

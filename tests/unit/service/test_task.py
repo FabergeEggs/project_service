@@ -1,4 +1,4 @@
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
@@ -11,29 +11,40 @@ import src.adapters.repository.errors as adapter_errors
 
 
 def make_task(**kwargs) -> Task:
-    default = dict(
-        task_id=uuid4(),
-        project_id=uuid4(),
+    return Task(
+        task_id=kwargs.get("task_id", uuid4()),
+        project_id=kwargs.get("project_id", uuid4()),
         creator_id=uuid4(),
         label="Test Task",
-        creator="test_user",
         short_description="Short task description",
         description="Full detailed task description for testing",
         created_at=datetime.now(),
         updated_at=datetime.now(),
-        status=TaskStatusEnum.ACTIVE,
-        answers_count=0
+        status=kwargs.get("status", TaskStatusEnum.ACTIVE),
+        answers_count=kwargs.get("answers_count", 0)
     )
-    default.update(kwargs)
-    return Task(**default)
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", ProjectStatusEnum.ACTIVE)
-    return MockProject()
+def make_task_dict(**kwargs) -> dict:
+    return {
+        "task_id": kwargs.get("task_id", uuid4()),
+        "project_id": kwargs.get("project_id", uuid4()),
+        "creator_id": uuid4(),
+        "label": "Test Task",
+        "short_description": "Short task description",
+        "description": "Full detailed task description for testing",
+        "created_at": datetime.now(),
+        "updated_at": datetime.now(),
+        "status": kwargs.get("status", TaskStatusEnum.ACTIVE),
+        "answers_count": kwargs.get("answers_count", 0)
+    }
+
+
+def make_project_mock(**kwargs) -> dict:
+    return {
+        "id": kwargs.get("id", uuid4()),
+        "status": kwargs.get("status", ProjectStatusEnum.ACTIVE),
+    }
 
 
 @pytest.fixture
@@ -152,22 +163,26 @@ class TestGetTask:
     @pytest.mark.asyncio
     async def test_get_task(self, service, repo):
         task = make_task()
+        task_dict = make_task_dict(
+            task_id=task.task_id, project_id=task.project_id)
         project = make_project_mock(id=task.project_id)
-        repo.get_task.return_value = task
+        repo.get_task.return_value = task_dict
         repo.get_project_info.return_value = project
 
         result = await service.get_task(task.task_id)
 
         repo.get_task.assert_awaited_once_with(task.task_id)
         repo.get_project_info.assert_awaited_once_with(task.project_id)
-        assert result == task
+        assert result == task_dict
 
     @pytest.mark.asyncio
     async def test_get_task_project_deleted(self, service, repo):
         task = make_task()
+        task_dict = make_task_dict(
+            task_id=task.task_id, project_id=task.project_id)
         project = make_project_mock(
             id=task.project_id, status=ProjectStatusEnum.DELETED)
-        repo.get_task.return_value = task
+        repo.get_task.return_value = task_dict
         repo.get_project_info.return_value = project
 
         with pytest.raises(project_errors.ProjectDeletedError):
