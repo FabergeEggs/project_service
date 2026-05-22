@@ -24,5 +24,5 @@ class Settings(BaseSettings):
     kafka_group_id: str = Field(
         default="project-service", alias="KAFKA_GROUP_ID")
     http_host: str = Field(default="0.0.0.0", alias="HTTP_HOST")
-    http_port: int = Field(default=8000, alias="HTTP_PORT")
+    http_port: int = Field(default=8001, alias="HTTP_PORT")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

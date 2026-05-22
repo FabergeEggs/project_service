@@ -61,7 +61,7 @@ class PostCreateDTO(BaseModel):
 
 
 class PostUpdateDTO(BaseModel):
-    project_id: Optional[UUID]
+    project_id: Optional[UUID] = None
     label: Optional[str] = Field(None, min_length=3, max_length=255)
     short_description: Optional[str] = Field(None, max_length=500)
     description: Optional[str] = Field(None, max_length=5000)

@@ -64,6 +64,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 id=project.id,
                 label=project.label,
                 creator=project.creator,
+                creator_id=project.creator_id,
                 short_description=project.short_description,
                 description=project.description,
                 tags=[
@@ -154,6 +155,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                     id=project.id,
                     label=project.label,
                     creator=project.creator,
+                    creator_id=project.creator_id,
                     short_description=project.short_description,
                     description=project.description,
                     tags=[
@@ -337,8 +339,9 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         post = Post(
             post_id=None,
             project_id=project_id,
+            creator_id=current_user.user_id,
+            creator=current_user.username,
             label=post_data.label,
-            creator=post_data.creator,
             short_description=post_data.short_description,
             description=post_data.description,
             created_at=datetime.now(timezone.utc),
@@ -385,6 +388,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             project_id=existing.project_id,
             label=post_data.label if post_data.label else existing.label,
             creator=existing.creator,
+            creator_id=existing.creator_id,
             short_description=post_data.short_description if post_data.short_description else existing.short_description,
             description=post_data.description if post_data.description else existing.description,
             created_at=existing.created_at,
@@ -450,6 +454,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 project_id=post.project_id,
                 label=post.label,
                 creator=post.creator,
+                creator_id=post.creator_id,
                 short_description=post.short_description,
                 description=post.description,
                 created_at=post.created_at,
@@ -481,7 +486,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             )
 
         try:
-            await project_service.add_member(project_id, user_data.user_id)
+            await project_service.add_member(project_id, user_data.id)
             return {"message": "Member added successfully"}
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
