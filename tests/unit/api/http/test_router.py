@@ -6,7 +6,6 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from src.api.http.dependencies import get_current_user, UserInfo
 from src.api.http.project_router import create_project_router
 from src.models.project import ProjectStatusEnum, TaskStatusEnum
 import src.services.errors as project_errors

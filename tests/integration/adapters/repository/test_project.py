@@ -10,10 +10,6 @@ from src.models.project import (
 import src.adapters.repository.errors as adapter_errors
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def make_project(creator_id: uuid.UUID, **kwargs) -> Project:
     defaults = dict(
         id=uuid.uuid4(),
@@ -62,10 +58,6 @@ def make_post(project_id: uuid.UUID, creator_id: uuid.UUID, **kwargs) -> Post:
     defaults.update(kwargs)
     return Post(**defaults)
 
-
-# ---------------------------------------------------------------------------
-# Project CRUD
-# ---------------------------------------------------------------------------
 
 @pytest.mark.integration
 class TestCreateProject:
@@ -225,10 +217,6 @@ class TestGetProjectStatistics:
             await project_repository.get_project_statistics(uuid.uuid4())
 
 
-# ---------------------------------------------------------------------------
-# Task CRUD
-# ---------------------------------------------------------------------------
-
 @pytest.mark.integration
 class TestCreateTask:
     @pytest.mark.asyncio
@@ -309,10 +297,6 @@ class TestUpdateTask:
             await project_repository.update_task(task)
 
 
-# ---------------------------------------------------------------------------
-# Task answer counters
-# ---------------------------------------------------------------------------
-
 @pytest.mark.integration
 class TestTaskAnswerCounters:
     @pytest.mark.asyncio
@@ -350,10 +334,6 @@ class TestTaskAnswerCounters:
         with pytest.raises(adapter_errors.TaskNotFoundError):
             await project_repository.decrement_task_answer(uuid.uuid4())
 
-
-# ---------------------------------------------------------------------------
-# Post CRUD
-# ---------------------------------------------------------------------------
 
 @pytest.mark.integration
 class TestCreatePost:
@@ -453,10 +433,6 @@ class TestDeletePost:
             await project_repository.delete_post(uuid.uuid4())
 
 
-# ---------------------------------------------------------------------------
-# Post answer counters
-# ---------------------------------------------------------------------------
-
 @pytest.mark.integration
 class TestPostAnswerCounters:
     @pytest.mark.asyncio
@@ -495,10 +471,6 @@ class TestPostAnswerCounters:
             await project_repository.decrement_post_answer(uuid.uuid4())
 
 
-# ---------------------------------------------------------------------------
-# Memberships
-# ---------------------------------------------------------------------------
-
 @pytest.mark.integration
 class TestAddMember:
     @pytest.mark.asyncio
@@ -527,7 +499,6 @@ class TestAddMember:
             avatar_link="http://example.com/avatar.png",
         )
         await project_repository.add_member(project_id, user)
-        # upsert — без ошибки
         await project_repository.add_member(project_id, user)
 
         stats = await project_repository.get_project_statistics(project_id)
@@ -598,10 +569,6 @@ class TestGetUserMemberships:
         assert volunteers == []
 
 
-# ---------------------------------------------------------------------------
-# Denorm user
-# ---------------------------------------------------------------------------
-
 @pytest.mark.integration
 class TestUpsertDenormUser:
     @pytest.mark.asyncio
@@ -626,10 +593,6 @@ class TestUpsertDenormUser:
                 uuid.uuid4(), {"unknown_field": "value"}
             )
 
-
-# ---------------------------------------------------------------------------
-# Publications
-# ---------------------------------------------------------------------------
 
 @pytest.mark.integration
 class TestGetProjectPublications:

@@ -538,10 +538,10 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         post = Post(
             post_id=post_id,
             project_id=existing["project_id"],
-            label=post_data.label,
+            label=post_data.label or existing["label"],
             creator_id=existing["creator_id"],
-            short_description=post_data.short_description,
-            description=post_data.description,
+            short_description=post_data.short_description or existing["short_description"],
+            description=post_data.description or existing["description"],
             comments_count=existing["comments_count"],
             created_at=existing["created_at"],
             updated_at=datetime.now(timezone.utc)
