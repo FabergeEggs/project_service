@@ -115,6 +115,11 @@ class ProjectPostgresRepository:
                             (project_id, tag_id)
                         )
 
+                await conn.execute(
+                    MembershipQueries.INSERT_MEMBERSHIP,
+                    (project_id, project.creator_id, 'SCIENTIST')
+                )
+
                 return project_id
 
     async def get_project_info(self, id: UUID) -> dict:

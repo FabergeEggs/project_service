@@ -238,6 +238,12 @@ class MembershipQueries:
         AND puc.role != 'DELETED'
         """
 
+    INSERT_MEMBERSHIP = """
+        INSERT INTO project_user_connection (project_id, user_id, role)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (project_id, user_id) DO NOTHING
+    """
+
     UPSERT_MEMBER = """
         INSERT INTO project_user_connection (project_id, user_id, role)
         VALUES (%s, %s, %s)

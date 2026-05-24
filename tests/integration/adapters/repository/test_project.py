@@ -197,7 +197,7 @@ class TestGetProjectStatistics:
         stats = await project_repository.get_project_statistics(project_id)
 
         assert stats["tasks_count"] == 0
-        assert stats["members_count"] == 0
+        assert stats["members_count"] == 1
         assert stats["answers_count"] == 0
 
     @pytest.mark.asyncio
@@ -486,7 +486,7 @@ class TestAddMember:
         await project_repository.add_member(project_id, user)
 
         stats = await project_repository.get_project_statistics(project_id)
-        assert stats["members_count"] == 1
+        assert stats["members_count"] == 2
 
     @pytest.mark.asyncio
     async def test_upserts_on_duplicate_member(self, project_repository, creator_id, member_id):
@@ -502,7 +502,7 @@ class TestAddMember:
         await project_repository.add_member(project_id, user)
 
         stats = await project_repository.get_project_statistics(project_id)
-        assert stats["members_count"] == 1
+        assert stats["members_count"] == 2
 
 
 @pytest.mark.integration
@@ -522,7 +522,7 @@ class TestRemoveMember:
         await project_repository.remove_member(project_id, user.id)
 
         stats = await project_repository.get_project_statistics(project_id)
-        assert stats["members_count"] == 0
+        assert stats["members_count"] == 1
 
     @pytest.mark.asyncio
     async def test_raises_when_user_not_member(self, project_repository, creator_id):
@@ -561,6 +561,15 @@ class TestGetUserMemberships:
 
         assert len(scientist_list) == 1
         assert len(volunteer_list) == 1
+
+    @pytest.mark.asyncio
+    async def test_creator_appears_in_memberships(self, project_repository, creator_id):
+        project = make_project(creator_id=creator_id)
+        await project_repository.create_project(project)
+
+        scientist_list, volunteer_list = await project_repository.get_user_memberships(creator_id)
+
+        assert len(scientist_list) + len(volunteer_list) > 0
 
     @pytest.mark.asyncio
     async def test_returns_empty_for_unknown_user(self, project_repository):
