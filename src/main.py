@@ -93,8 +93,10 @@ async def _run(settings: Settings) -> None:
     )
 
     # Profiles consumer
+    from src.kafka_topics import PROFILE_TOPICS
+
     profile_consumer = AIOKafkaConsumer(
-        settings.kafka_topic_profile,
+        *PROFILE_TOPICS,
         bootstrap_servers=settings.kafka_bootstrap,
         group_id=f"{settings.kafka_group_id}-profile",
     )
@@ -102,7 +104,7 @@ async def _run(settings: Settings) -> None:
         profile_consumer, project_service)
     logger.debug(
         "Profile Kafka consumer created: topic={}, group={}",
-        settings.kafka_topic_profile,
+        PROFILE_TOPICS,
         settings.kafka_group_id,
     )
 

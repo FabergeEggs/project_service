@@ -1,6 +1,7 @@
 from uuid import UUID
 from aiokafka import AIOKafkaProducer
 from src.models.project import Project, Post, Task
+from src import kafka_topics as topics
 import json
 from datetime import datetime, timezone
 from loguru import logger
@@ -54,53 +55,51 @@ class KafkaProducerClient:
 
     async def send_create_post(self, post: Post) -> None:
         await self._send_event(
-            topic="post.created",
+            topic=topics.POST_CREATED,
             key=str(post.post_id),
             value={
-                "type": "post.created",
                 "post_id": str(post.post_id),
                 "project_id": str(post.project_id),
                 "creator_id": str(post.creator_id),
                 "label": post.label,
                 "short_description": post.short_description,
+                "status": "ACTIVE",
                 "created_at": post.created_at.isoformat(),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
     async def send_update_post(self, post: Post) -> None:
         await self._send_event(
-            topic="post.updated",
+            topic=topics.POST_CHANGED,
             key=str(post.post_id),
             value={
-                "type": "post.updated",
                 "post_id": str(post.post_id),
                 "project_id": str(post.project_id),
                 "creator_id": str(post.creator_id),
                 "label": post.label,
                 "short_description": post.short_description,
+                "status": "ACTIVE",
                 "updated_at": post.updated_at.isoformat(),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
     async def send_delete_post(self, post_id: UUID) -> None:
         await self._send_event(
-            topic="post.deleted",
+            topic=topics.POST_DELETE,
             key=str(post_id),
             value={
-                "type": "post.deleted",
                 "post_id": str(post_id),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
     async def send_create_task(self, task: Task) -> None:
         await self._send_event(
-            topic="task.created",
+            topic=topics.TASK_CREATED,
             key=str(task.task_id),
             value={
-                "type": "task.created",
                 "task_id": str(task.task_id),
                 "project_id": str(task.project_id),
                 "creator_id": str(task.creator_id),
@@ -109,16 +108,15 @@ class KafkaProducerClient:
                 "status": task.status.value,
                 "answer_count": task.answers_count,
                 "created_at": task.created_at.isoformat(),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
     async def send_update_task(self, task: Task) -> None:
         await self._send_event(
-            topic="task.updated",
+            topic=topics.TASK_CHANGED,
             key=str(task.task_id),
             value={
-                "type": "task.updated",
                 "task_id": str(task.task_id),
                 "project_id": str(task.project_id),
                 "creator_id": str(task.creator_id),
@@ -127,17 +125,16 @@ class KafkaProducerClient:
                 "status": task.status.value,
                 "answer_count": task.answers_count,
                 "updated_at": task.updated_at.isoformat(),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )
 
     async def send_delete_task(self, task_id: UUID) -> None:
         await self._send_event(
-            topic="task.deleted",
+            topic=topics.TASK_DELETE,
             key=str(task_id),
             value={
-                "type": "task.deleted",
                 "task_id": str(task_id),
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat(),
             }
         )

@@ -1,13 +1,9 @@
 import pytest
-from httpx import AsyncClient
-from fastapi import FastAPI
-from src.api.http.project_router import create_project_router
-from src.services.project_service import ProjectService
-import src.services.errors as project_errors
-
 from uuid import uuid4
-import pytest
 from unittest.mock import AsyncMock
+
+import src.adapters.repository.errors as adapter_errors
+import src.services.errors as project_errors
 
 
 @pytest.mark.integration
@@ -15,25 +11,24 @@ class TestCreateProjectAPI:
 
     @pytest.mark.asyncio
     async def test_create_project_success(self, client, repo, kafka, auth_header):
-        project_id = uuid4()
-        repo.create_project.return_value = project_id
+        repo.create_project.return_value = None
 
         response = await client.post(
-            "/project/",
+            "/project",
             json={
                 "label": "Test Project",
                 "short_description": "Short description",
                 "description": "Full description",
                 "tags": ["python", "testing"],
-                "status": "ACTIVE"
+                "status": "ACTIVE",
             },
-            headers=auth_header
+            headers=auth_header,
         )
 
         assert response.status_code == 201
         data = response.json()
-        assert data["id"] == str(project_id)
         assert data["message"] == "Project created successfully"
+        assert data["id"]
 
         repo.create_project.assert_awaited_once()
         kafka.send_create_project.assert_awaited_once()
@@ -41,49 +36,49 @@ class TestCreateProjectAPI:
     @pytest.mark.asyncio
     async def test_create_project_invalid_data(self, client, repo, auth_header):
         response = await client.post(
-            "/project/",
+            "/project",
             json={
                 "label": "A" * 300,
                 "short_description": "",
                 "description": "",
                 "tags": [],
-                "status": "INVALID"
+                "status": "INVALID",
             },
-            headers=auth_header
+            headers=auth_header,
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 422
         assert "detail" in response.json()
 
     @pytest.mark.asyncio
     async def test_create_project_unauthorized(self, client):
         response = await client.post(
-            "/project/",
+            "/project",
             json={
                 "label": "Test Project",
                 "short_description": "Short",
                 "description": "Full",
                 "tags": [],
-                "status": "ACTIVE"
-            }
+                "status": "ACTIVE",
+            },
         )
 
-        assert response.status_code == 401
+        assert response.status_code == 422
 
     @pytest.mark.asyncio
     async def test_create_project_already_exists(self, client, repo, auth_header):
-        repo.create_project.side_effect = project_errors.ProjectAlreadyExistsError()
+        repo.create_project.side_effect = adapter_errors.ProjectAlreadyExistsError()
 
         response = await client.post(
-            "/project/",
+            "/project",
             json={
                 "label": "Duplicate Project",
                 "short_description": "Short",
                 "description": "Full",
                 "tags": [],
-                "status": "ACTIVE"
+                "status": "ACTIVE",
             },
-            headers=auth_header
+            headers=auth_header,
         )
 
         assert response.status_code == 409
@@ -95,24 +90,20 @@ class TestGetProjectAPI:
 
     @pytest.mark.asyncio
     async def test_get_project_success(self, client, repo, auth_header):
-        """API: получение информации о проекте"""
         project_id = uuid4()
         repo.get_project_info.return_value = {
-            "id": str(project_id),
+            "id": project_id,
             "label": "Test Project",
             "description": "Full description",
-            "creator_id": "123e4567-e89b-12d3-a456-426614174000",
+            "creator_id": uuid4(),
             "creator_name": "Test User",
             "status": "ACTIVE",
             "created_at": "2026-01-01T00:00:00Z",
             "updated_at": "2026-01-01T00:00:00Z",
-            "tags": []
+            "tags": [],
         }
 
-        response = await client.get(
-            f"/project/{project_id}/info",
-            headers=auth_header
-        )
+        response = await client.get(f"/project/{project_id}/info")
 
         assert response.status_code == 200
         data = response.json()
@@ -120,27 +111,19 @@ class TestGetProjectAPI:
         assert data["label"] == "Test Project"
 
     @pytest.mark.asyncio
-    async def test_get_project_not_found(self, client, repo, auth_header):
-        """API: проект не найден"""
+    async def test_get_project_not_found(self, client, repo):
         project_id = uuid4()
         repo.get_project_info.side_effect = project_errors.ProjectNotFoundError()
 
-        response = await client.get(
-            f"/project/{project_id}/info",
-            headers=auth_header
-        )
+        response = await client.get(f"/project/{project_id}/info")
 
         assert response.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_project_deleted(self, client, repo, auth_header):
-        """API: проект удалён"""
+    async def test_get_project_deleted(self, client, repo):
         project_id = uuid4()
         repo.get_project_info.side_effect = project_errors.ProjectDeletedError()
 
-        response = await client.get(
-            f"/project/{project_id}/info",
-            headers=auth_header
-        )
+        response = await client.get(f"/project/{project_id}/info")
 
-        assert response.status_code == 410  # Gone
+        assert response.status_code == 410

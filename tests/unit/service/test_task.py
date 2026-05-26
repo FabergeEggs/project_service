@@ -27,12 +27,7 @@ def make_task(**kwargs) -> Task:
     return Task(**default)
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", ProjectStatusEnum.ACTIVE)
-    return MockProject()
+from tests.unit.conftest import make_project_info as make_project_mock, make_task_info
 
 
 @pytest.fixture
@@ -150,27 +145,27 @@ class TestUpdateTask:
 class TestGetTask:
     @pytest.mark.asyncio
     async def test_get_task(self, service, repo):
-        task = make_task()
-        project = make_project_mock(id=task.project_id)
+        task = make_task_info()
+        project = make_project_mock(id=task["project_id"])
         repo.get_task.return_value = task
         repo.get_project_info.return_value = project
 
-        result = await service.get_task(task.task_id)
+        result = await service.get_task(task["task_id"])
 
-        repo.get_task.assert_awaited_once_with(task.task_id)
-        repo.get_project_info.assert_awaited_once_with(task.project_id)
+        repo.get_task.assert_awaited_once_with(task["task_id"])
+        repo.get_project_info.assert_awaited_once_with(task["project_id"])
         assert result == task
 
     @pytest.mark.asyncio
     async def test_get_task_project_deleted(self, service, repo):
-        task = make_task()
+        task = make_task_info()
         project = make_project_mock(
-            id=task.project_id, status=ProjectStatusEnum.DELETED)
+            id=task["project_id"], status=ProjectStatusEnum.DELETED)
         repo.get_task.return_value = task
         repo.get_project_info.return_value = project
 
         with pytest.raises(project_errors.ProjectDeletedError):
-            await service.get_task(task.task_id)
+            await service.get_task(task["task_id"])
 
     @pytest.mark.asyncio
     async def test_get_task_not_found(self, service, repo):

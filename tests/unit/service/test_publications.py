@@ -25,12 +25,7 @@ def make_publication(**kwargs):
     return default
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", "ACTIVE")
-    return MockProject()
+from tests.unit.conftest import make_project_info as make_project_mock
 
 
 @pytest.fixture

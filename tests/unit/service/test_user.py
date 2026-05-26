@@ -14,19 +14,13 @@ def make_denorm_user(**kwargs) -> DenormUser:
     default = dict(
         id=uuid4(),
         name="Test User",
-        role=ProjectRoleEnum.VOLUNTEER,
-        avatar_link="https://example.com/avatar.jpg"
+        role=ProjectRoleEnum.VOLUNTEER
     )
     default.update(kwargs)
     return DenormUser(**default)
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", "ACTIVE")
-    return MockProject()
+from tests.unit.conftest import make_project_info as make_project_mock
 
 
 @pytest.fixture
@@ -184,9 +178,17 @@ class TestUpsertDenormUser:
     async def test_upsert_denorm_user_success(self, service, repo):
         user = make_denorm_user()
 
-        await service.upsert_denorm_user(user)
+        await service.upsert_denorm_user(
+            user.id,
+            {"name": user.name},
+            {"role": user.role},
+        )
 
-        repo.upsert_denorm_user.assert_awaited_once_with(user)
+        repo.upsert_denorm_user.assert_awaited_once_with(
+            user.id,
+            {"name": user.name},
+            {"role": user.role},
+        )
 
     @pytest.mark.asyncio
     async def test_upsert_denorm_user_not_found(self, service, repo):
@@ -194,4 +196,8 @@ class TestUpsertDenormUser:
         repo.upsert_denorm_user.side_effect = adapter_errors.UserNotFoundError
 
         with pytest.raises(project_errors.UserNotFoundError):
-            await service.upsert_denorm_user(user)
+            await service.upsert_denorm_user(
+                user.id,
+                {"name": user.name},
+                {"role": user.role},
+            )

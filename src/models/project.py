@@ -75,4 +75,3 @@ class DenormUser:
     id: UUID
     name: str
     role: ProjectRoleEnum
-    avatar_link: str

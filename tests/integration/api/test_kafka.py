@@ -12,27 +12,16 @@ def consumer():
 
 
 @pytest.fixture
-def repo():
-    return AsyncMock()
-
-
-@pytest.fixture
-def kafka():
-    return AsyncMock()
-
-
-@pytest.fixture
-def project_service(repo, kafka):
-    from src.services.project_service import ProjectService
-    return ProjectService(
-        project_repository=repo,
-        kafka_producer=kafka
-    )
+def project_service():
+    mock = AsyncMock()
+    mock.increment_task_answer = AsyncMock()
+    mock.decrement_task_answer = AsyncMock()
+    return mock
 
 
 @pytest.fixture
 def answers_consumer(consumer, project_service):
-    return AnswerKafkaConsumer(consumer, project_service)  # ← правильное имя
+    return AnswerKafkaConsumer(consumer, project_service)
 
 
 @pytest.mark.asyncio
@@ -42,12 +31,11 @@ class TestAnswerKafkaConsumer:
         message = AsyncMock()
         message.value = json.dumps({
             "type": "answer.created",
-            "task_id": str(task_id)
-        }).encode('utf-8')
+            "task_id": str(task_id),
+        }).encode("utf-8")
 
         await answers_consumer._handle_message(message)
 
-        # Проверяем, что метод сервиса был вызван
         project_service.increment_task_answer.assert_awaited_once_with(task_id)
 
     async def test_handle_answer_deleted(self, answers_consumer, project_service):
@@ -55,8 +43,8 @@ class TestAnswerKafkaConsumer:
         message = AsyncMock()
         message.value = json.dumps({
             "type": "answer.deleted",
-            "task_id": str(task_id)
-        }).encode('utf-8')
+            "task_id": str(task_id),
+        }).encode("utf-8")
 
         await answers_consumer._handle_message(message)
 
@@ -65,8 +53,8 @@ class TestAnswerKafkaConsumer:
     async def test_handle_missing_task_id(self, answers_consumer, project_service):
         message = AsyncMock()
         message.value = json.dumps({
-            "type": "answer.created"
-        }).encode('utf-8')
+            "type": "answer.created",
+        }).encode("utf-8")
 
         await answers_consumer._handle_message(message)
 

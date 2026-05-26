@@ -18,12 +18,9 @@ class Settings(BaseSettings):
         default="localhost:9093", alias="KAFKA_BOOTSTRAP")
     kafka_topic_answers: str = Field(
         default="project-answers", alias="KAFKA_TOPIC_ANSWERS"
-    )
+    )  # response_service publishes answer.created / answer.deleted here
     kafka_topic_comments: str = Field(
         default="project-comments", alias="KAFKA_TOPIC_COMMENTS"
-    )
-    kafka_topic_profile: str = Field(
-        default="project-profile", alias="KAFKA_TOPIC_PROFILE"
     )
     kafka_topic_events: str = Field(
         default="project-events", alias="KAFKA_TOPIC_EVENTS")

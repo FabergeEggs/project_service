@@ -26,12 +26,7 @@ def make_post(**kwargs) -> Post:
     return Post(**default)
 
 
-def make_project_mock(**kwargs):
-    class MockProject:
-        def __init__(self):
-            self.id = kwargs.get("id", uuid4())
-            self.status = kwargs.get("status", "ACTIVE")
-    return MockProject()
+from tests.unit.conftest import make_project_info as make_project_mock, make_post_info
 
 
 @pytest.fixture
@@ -148,23 +143,23 @@ class TestDeletePost:
     @pytest.mark.asyncio
     async def test_delete_post(self, service, repo, kafka):
         post_id = uuid4()
-        post = make_post(post_id=post_id)
-        project = make_project_mock(id=post.project_id)
+        post = make_post_info(post_id=post_id)
+        project = make_project_mock(id=post["project_id"])
         repo.get_post.return_value = post
         repo.get_project_info.return_value = project
 
         await service.delete_post(post_id)
 
         repo.get_post.assert_awaited_once_with(post_id)
-        repo.get_project_info.assert_awaited_once_with(post.project_id)
+        repo.get_project_info.assert_awaited_once_with(post["project_id"])
         repo.delete_post.assert_awaited_once_with(post_id)
         kafka.send_delete_post.assert_called_once_with(post_id)
 
     @pytest.mark.asyncio
     async def test_delete_post_project_deleted(self, service, repo):
         post_id = uuid4()
-        post = make_post(post_id=post_id)
-        project = make_project_mock(id=post.project_id, status="DELETED")
+        post = make_post_info(post_id=post_id)
+        project = make_project_mock(id=post["project_id"], status="DELETED")
         repo.get_post.return_value = post
         repo.get_project_info.return_value = project
 
@@ -174,8 +169,8 @@ class TestDeletePost:
     @pytest.mark.asyncio
     async def test_delete_post_project_finished(self, service, repo):
         post_id = uuid4()
-        post = make_post(post_id=post_id)
-        project = make_project_mock(id=post.project_id, status="FINISHED")
+        post = make_post_info(post_id=post_id)
+        project = make_project_mock(id=post["project_id"], status="FINISHED")
         repo.get_post.return_value = post
         repo.get_project_info.return_value = project
 
@@ -196,28 +191,28 @@ class TestGetPost:
     @pytest.mark.asyncio
     async def test_get_post(self, service, repo):
         project_id = uuid4()
-        post = make_post(project_id=project_id)
+        post = make_post_info(project_id=project_id)
         project = make_project_mock(id=project_id)
 
         repo.get_post.return_value = post
         repo.get_project_info.return_value = project
 
-        result = await service.get_post(post.post_id)
+        result = await service.get_post(post["post_id"])
 
-        repo.get_post.assert_awaited_once_with(post.post_id)
+        repo.get_post.assert_awaited_once_with(post["post_id"])
         repo.get_project_info.assert_awaited_once_with(
             project_id)
         assert result == post
 
     @pytest.mark.asyncio
     async def test_get_post_project_deleted(self, service, repo):
-        post = make_post()
-        project = make_project_mock(id=post.project_id, status="DELETED")
+        post = make_post_info()
+        project = make_project_mock(id=post["project_id"], status="DELETED")
         repo.get_post.return_value = post
         repo.get_project_info.return_value = project
 
         with pytest.raises(project_errors.ProjectDeletedError):
-            await service.get_post(post.post_id)
+            await service.get_post(post["post_id"])
 
     @pytest.mark.asyncio
     async def test_get_post_not_found(self, service, repo):

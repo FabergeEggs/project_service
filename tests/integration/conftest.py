@@ -1,8 +1,8 @@
-# tests/integration/conftest.py
 import pytest
+import pytest_asyncio
 from unittest.mock import AsyncMock
 from fastapi import FastAPI
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from uuid import uuid4
 
 from src.api.http.project_router import create_project_router
@@ -23,37 +23,34 @@ def kafka():
 def project_service(repo, kafka):
     return ProjectService(
         project_repository=repo,
-        kafka_producer=kafka
-    )
-    return ProjectService(
-        project_repository=repo,
-        kafka_producer=kafka
+        kafka_producer=kafka,
     )
 
 
 @pytest.fixture
 def app(repo, kafka) -> FastAPI:
-    project_service = ProjectService(
+    service = ProjectService(
         project_repository=repo,
-        kafka_producer=kafka
+        kafka_producer=kafka,
     )
-    router = create_project_router(project_service)
+    router = create_project_router(service)
 
-    app = FastAPI()
-    app.include_router(router)
-    return app
+    application = FastAPI()
+    application.include_router(router)
+    return application
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(app):
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
 
 @pytest.fixture
 def auth_header():
     return {
         "X-User-Id": str(uuid4()),
-        "X-User-Name": "Test User",
-        "X-User-Roles": "user"
+        "X-Username": "Test User",
+        "X-User-Roles": "user",
     }
