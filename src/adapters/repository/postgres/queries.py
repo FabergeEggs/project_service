@@ -81,7 +81,8 @@ class ProjectQueries:
                 du.name as creator_name,
                 'post' as type,
                 NULL as status,
-                p.comments_count as answers_count
+                p.comments_count as answers_count,
+                p.media_ids as media_ids
             FROM post p
             LEFT JOIN denorm_user du ON du.id = p.creator_id
             WHERE p.project_id = %s
@@ -99,7 +100,8 @@ class ProjectQueries:
                 du.name as creator_name,
                 'task' as type,
                 t.status as status,
-                t.answer_count as answers_count
+                t.answer_count as answers_count,
+                t.media_ids as media_ids
             FROM task t
             LEFT JOIN denorm_user du ON du.id = t.creator_id
             WHERE t.project_id = %s
@@ -131,8 +133,8 @@ class TaskQueries:
             id, project_id, label, creator_id,
             short_description, description,
             created_at, updated_at,
-            answer_count, status
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            answer_count, status, media_ids
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
     UPDATE_TASK = """
@@ -147,7 +149,8 @@ class TaskQueries:
     SELECT_TASK = """
         SELECT t.id, t.project_id, t.label, t.short_description,
             t.description, t.creator_id, du.name AS creator,
-            t.status, t.created_at, t.updated_at, t.answer_count
+            t.status, t.created_at, t.updated_at, t.answer_count,
+            t.media_ids
         FROM task t
         LEFT JOIN denorm_user du ON du.id = t.creator_id
         WHERE t.id = %s AND t.status != 'DELETED'
@@ -175,8 +178,8 @@ class PostQueries:
         INSERT INTO post (
             id, project_id, label, creator_id,
             short_description, description,
-            comments_count, created_at, updated_at
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            comments_count, created_at, updated_at, media_ids
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
 
     UPDATE_POST = """
@@ -197,7 +200,7 @@ class PostQueries:
     SELECT_POST = """
         SELECT t.id, t.project_id, t.label, t.creator_id,
         du.name AS creator_name, t.short_description, t.description,
-        t.comments_count, t.created_at, t.updated_at
+        t.comments_count, t.created_at, t.updated_at, t.media_ids
         FROM post t
         LEFT JOIN denorm_user du ON du.id = t.creator_id
         WHERE t.id = %s

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
@@ -54,6 +54,7 @@ class Post:
     comments_count: int
     created_at: datetime
     updated_at: datetime
+    media_ids: list = field(default_factory=list)
 
 
 @dataclass
@@ -68,6 +69,7 @@ class Task:
     updated_at: datetime
     status: TaskStatusEnum
     answers_count: int = 0
+    media_ids: list = field(default_factory=list)
 
 
 @dataclass

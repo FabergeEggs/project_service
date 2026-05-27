@@ -23,12 +23,14 @@ class TaskDTO(BaseModel):
     updated_at: datetime
     answers_count: int = 0
     status: TaskStatusEnum
+    media_ids: list[UUID] = []
 
 
 class TaskCreateDTO(BaseModel):
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
+    media_ids: list[UUID] = []
 
 
 class TaskUpdateDTO(BaseModel):
@@ -49,12 +51,14 @@ class PostDTO(BaseModel):
     comments_count: int
     created_at: datetime
     updated_at: datetime
+    media_ids: list[UUID] = []
 
 
 class PostCreateDTO(BaseModel):
     label: str = Field(..., min_length=3, max_length=255)
     short_description: str = Field(..., max_length=500)
     description: str = Field(..., max_length=5000)
+    media_ids: list[UUID] = []
 
 
 class PostUpdateDTO(BaseModel):
@@ -125,6 +129,7 @@ class PublicationDTO(BaseModel):
     creator_name: str
     type: Literal["post", "task"]
     answers_count: int
+    media_ids: list[UUID] = []
 
     status: Optional[TaskStatusEnum] = None
 

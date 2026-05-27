@@ -94,7 +94,7 @@ class ProjectService():
 
         return project
 
-    async def create_project(self, project: Project) -> UUID:
+    async def create_project(self, project: Project, creator_name: str = "") -> UUID:
         """
         Create a new project.
 
@@ -103,6 +103,7 @@ class ProjectService():
 
         Args:
             project: Project object to create (ID can be None).
+            creator_name: Display name of the creator for the Kafka event.
 
         Returns:
             UUID of the newly created project.
@@ -114,7 +115,7 @@ class ProjectService():
 
         try:
             await self._project_repository.create_project(project)
-            await self._kafka_producer.send_create_project(project)
+            await self._kafka_producer.send_create_project(project, creator_name=creator_name)
             return project.id
         except adapter_errors.ProjectAlreadyExistsError:
             raise project_errors.ProjectAlreadyExistsError(
@@ -224,7 +225,7 @@ class ProjectService():
             raise project_errors.ProjectNotFoundError(
                 "Couldn't find project by given ID")
 
-    async def create_task(self, task: Task) -> UUID:
+    async def create_task(self, task: Task, creator_name: str = "") -> UUID:
         """
         Create a new task within a project.
 
@@ -233,6 +234,7 @@ class ProjectService():
 
         Args:
             task: Task object to create (ID can be None).
+            creator_name: Display name of the creator for the Kafka event.
 
         Returns:
             UUID of the newly created task.
@@ -247,7 +249,7 @@ class ProjectService():
         task.task_id = uuid4()
         try:
             await self._project_repository.create_task(task)
-            await self._kafka_producer.send_create_task(task)
+            await self._kafka_producer.send_create_task(task, creator_name=creator_name)
             return task.task_id
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
@@ -370,7 +372,7 @@ class ProjectService():
         except adapter_errors.PostNotFoundError:
             logger.warning(f"Post with id {id} doesn't exist")
 
-    async def create_post(self, post: Post) -> UUID:
+    async def create_post(self, post: Post, creator_name: str = "") -> UUID:
         """
         Create a new post within a project.
 
@@ -379,6 +381,7 @@ class ProjectService():
 
         Args:
             post: Post object to create (ID can be None).
+            creator_name: Display name of the creator for the Kafka event.
 
         Returns:
             UUID of the newly created post.
@@ -394,7 +397,7 @@ class ProjectService():
         post.post_id = uuid4()
         try:
             await self._project_repository.create_post(post)
-            await self._kafka_producer.send_create_post(post)
+            await self._kafka_producer.send_create_post(post, creator_name=creator_name)
             return post.post_id
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(

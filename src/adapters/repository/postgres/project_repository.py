@@ -334,7 +334,8 @@ class ProjectPostgresRepository:
                             task.created_at or now,
                             task.updated_at or now,
                             task.answers_count or 0,
-                            task.status.value
+                            task.status.value,
+                            task.media_ids or []
                         )
                     )
                 except psycopg_errors.UniqueViolation as e:
@@ -416,7 +417,8 @@ class ProjectPostgresRepository:
                     "status": TaskStatusEnum(rows[0][7]),
                     "created_at": rows[0][8],
                     "updated_at": rows[0][9],
-                    "answers_count": rows[0][10]
+                    "answers_count": rows[0][10],
+                    "media_ids": rows[0][11] or []
                 }
 
     async def increment_post_answer(self, id: UUID) -> None:
@@ -541,7 +543,8 @@ class ProjectPostgresRepository:
                             post.description,
                             post.comments_count or 0,
                             post.created_at or now,
-                            post.updated_at or now
+                            post.updated_at or now,
+                            post.media_ids or []
                         )
                     )
                 except psycopg_errors.UniqueViolation as e:
@@ -644,7 +647,8 @@ class ProjectPostgresRepository:
                     "description": rows[0][6],
                     "comments_count": rows[0][7],
                     "created_at": rows[0][8],
-                    "updated_at": rows[0][9]
+                    "updated_at": rows[0][9],
+                    "media_ids": rows[0][10] or []
                 }
 
     async def get_user_memberships(self, user_id: UUID) -> list[list[dict]]:
@@ -770,7 +774,8 @@ class ProjectPostgresRepository:
                         "creator_name": row[6],
                         "type": row[7],
                         "status": row[8],
-                        "answers_count": row[9]
+                        "answers_count": row[9],
+                        "media_ids": row[10] or []
                     })
 
                 return publications

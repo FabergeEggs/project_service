@@ -75,7 +75,9 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
         )
 
         try:
-            project_id = await project_service.create_project(project)
+            project_id = await project_service.create_project(
+                project, creator_name=current_user.username
+            )
             return {"id": project_id, "message": "Project created successfully"}
         except project_errors.ProjectAlreadyExistsError as e:
             raise HTTPException(
@@ -307,11 +309,12 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
             status=TaskStatusEnum.ACTIVE,
-            answers_count=0
+            answers_count=0,
+            media_ids=task_data.media_ids
         )
 
         try:
-            task_id = await project_service.create_task(task)
+            task_id = await project_service.create_task(task, creator_name=current_user.username)
             return {"id": task_id, "message": "Task created successfully"}
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
@@ -420,7 +423,8 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 created_at=task["created_at"],
                 updated_at=task["updated_at"],
                 status=task["status"],
-                answers_count=task["answers_count"]
+                answers_count=task["answers_count"],
+                media_ids=task["media_ids"]
             )
         except project_errors.TaskNotFoundError as e:
             raise HTTPException(
@@ -480,11 +484,12 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
             description=post_data.description,
             comments_count=0,
             created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc)
+            updated_at=datetime.now(timezone.utc),
+            media_ids=post_data.media_ids
         )
 
         try:
-            post_id = await project_service.create_post(post)
+            post_id = await project_service.create_post(post, creator_name=current_user.username)
             return {"id": post_id, "message": "Post created successfully"}
         except project_errors.ProjectNotFoundError as e:
             raise HTTPException(
@@ -638,7 +643,8 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 description=post["description"],
                 comments_count=post["comments_count"],
                 created_at=post["created_at"],
-                updated_at=post["updated_at"]
+                updated_at=post["updated_at"],
+                media_ids=post["media_ids"]
             )
         except project_errors.PostNotFoundError as e:
             raise HTTPException(
@@ -819,6 +825,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                     creator_name=pub["creator_name"],
                     type=pub["type"],
                     answers_count=pub["answers_count"],
+                    media_ids=pub.get("media_ids") or [],
                     status=pub.get("status")
                 )
                 publications.append(publication_dto)

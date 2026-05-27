@@ -41,12 +41,13 @@ class KafkaProducerClient:
             logger.error(f"Failed to send event to {topic}: {e}")
             raise
 
-    async def send_create_project(self, project: Project) -> None:
+    async def send_create_project(self, project: Project, creator_name: str = "") -> None:
         """
         Send a project.created event when a new project is created.
 
         Args:
             project: Project object containing the project details.
+            creator_name: Display name of the creator (username).
         """
         await self._send_event(
             topic="project.created",
@@ -56,18 +57,20 @@ class KafkaProducerClient:
                 "project_id": str(project.id),
                 "label": project.label,
                 "creator_id": str(project.creator_id),
+                "creator_name": creator_name,
                 "status": project.status.value,
                 "created_at": project.created_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
 
-    async def send_update_project(self, project: Project) -> None:
+    async def send_update_project(self, project: Project, creator_name: str = "") -> None:
         """
         Send a project.updated event when a project is modified.
 
         Args:
             project: Project object containing the updated project details.
+            creator_name: Display name of the creator (username).
         """
         await self._send_event(
             topic="project.updated",
@@ -77,18 +80,20 @@ class KafkaProducerClient:
                 "project_id": str(project.id),
                 "label": project.label,
                 "creator_id": str(project.creator_id),
+                "creator_name": creator_name,
                 "status": project.status.value,
                 "updated_at": project.updated_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
 
-    async def send_create_post(self, post: Post) -> None:
+    async def send_create_post(self, post: Post, creator_name: str = "") -> None:
         """
         Send a post.created event when a new post is created.
 
         Args:
             post: Post object containing the post details.
+            creator_name: Display name of the creator (username).
         """
         await self._send_event(
             topic="post.created",
@@ -98,19 +103,22 @@ class KafkaProducerClient:
                 "post_id": str(post.post_id),
                 "project_id": str(post.project_id),
                 "creator_id": str(post.creator_id),
+                "creator_name": creator_name,
                 "label": post.label,
                 "short_description": post.short_description,
+                "media_ids": [str(m) for m in (post.media_ids or [])],
                 "created_at": post.created_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
 
-    async def send_update_post(self, post: Post) -> None:
+    async def send_update_post(self, post: Post, creator_name: str = "") -> None:
         """
         Send a post.updated event when a post is modified.
 
         Args:
             post: Post object containing the updated post details.
+            creator_name: Display name of the creator (username).
         """
         await self._send_event(
             topic="post.updated",
@@ -120,8 +128,10 @@ class KafkaProducerClient:
                 "post_id": str(post.post_id),
                 "project_id": str(post.project_id),
                 "creator_id": str(post.creator_id),
+                "creator_name": creator_name,
                 "label": post.label,
                 "short_description": post.short_description,
+                "media_ids": [str(m) for m in (post.media_ids or [])],
                 "updated_at": post.updated_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
@@ -144,12 +154,13 @@ class KafkaProducerClient:
             }
         )
 
-    async def send_create_task(self, task: Task) -> None:
+    async def send_create_task(self, task: Task, creator_name: str = "") -> None:
         """
         Send a task.created event when a new task is created.
 
         Args:
             task: Task object containing the task details.
+            creator_name: Display name of the creator (username).
         """
         await self._send_event(
             topic="task.created",
@@ -159,21 +170,24 @@ class KafkaProducerClient:
                 "task_id": str(task.task_id),
                 "project_id": str(task.project_id),
                 "creator_id": str(task.creator_id),
+                "creator_name": creator_name,
                 "label": task.label,
                 "short_description": task.short_description,
                 "status": task.status.value,
                 "answer_count": task.answers_count,
+                "media_ids": [str(m) for m in (task.media_ids or [])],
                 "created_at": task.created_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
         )
 
-    async def send_update_task(self, task: Task) -> None:
+    async def send_update_task(self, task: Task, creator_name: str = "") -> None:
         """
         Send a task.updated event when a task is modified.
 
         Args:
             task: Task object containing the updated task details.
+            creator_name: Display name of the creator (username).
         """
         await self._send_event(
             topic="task.updated",
@@ -183,10 +197,12 @@ class KafkaProducerClient:
                 "task_id": str(task.task_id),
                 "project_id": str(task.project_id),
                 "creator_id": str(task.creator_id),
+                "creator_name": creator_name,
                 "label": task.label,
                 "short_description": task.short_description,
                 "status": task.status.value,
                 "answer_count": task.answers_count,
+                "media_ids": [str(m) for m in (task.media_ids or [])],
                 "updated_at": task.updated_at.isoformat(),
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
