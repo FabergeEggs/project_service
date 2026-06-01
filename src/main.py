@@ -84,10 +84,10 @@ async def _run(settings: Settings) -> None:
         bootstrap_servers=settings.kafka_bootstrap,
         group_id=f"{settings.kafka_group_id}-comment",
     )
-    comment_kafka_consumer = AnswerKafkaConsumer(
+    comment_kafka_consumer = CommentsKafkaConsumer(
         comment_consumer, project_service)
     logger.debug(
-        "Answer Kafka consumer created: topic={}, group={}",
+        "Comments Kafka consumer created: topic={}, group={}",
         settings.kafka_topic_comments,
         settings.kafka_group_id,
     )

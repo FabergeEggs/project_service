@@ -16,6 +16,7 @@ curl http://localhost:8000/health
 |-------------|--------|
 | In | `profile_service.user.registered`, `profile_service.profile.changed`, `profile_service.user.deleted` |
 | In | `project-answers` (`answer.created`, `answer.deleted`) |
+| In | `project-comments` (`comment.created`, `comment.deleted`) |
 | Out | `project_service.task.created` / `.changed` / `.delete` |
 | Out | `project_service.post.created` / `.changed` / `.delete` |
 
