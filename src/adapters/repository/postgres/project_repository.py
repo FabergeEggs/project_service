@@ -164,11 +164,12 @@ class ProjectPostgresRepository:
                 return {
                     "id": row[0],
                     "label": row[1],
-                    "description": row[2],
-                    "creator_id": row[3],
-                    "creator_name": row[4],
-                    "status": ProjectStatusEnum(row[5]),
-                    "created_at": row[6],
+                    "short_description": row[2],
+                    "description": row[3],
+                    "creator_id": row[4],
+                    "creator_name": row[5],
+                    "status": ProjectStatusEnum(row[6]),
+                    "created_at": row[7],
                     "tags": tags
                 }
 

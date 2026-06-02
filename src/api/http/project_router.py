@@ -109,6 +109,7 @@ def create_project_router(project_service: ProjectService) -> APIRouter:
                 label=project["label"],
                 creator_id=project["creator_id"],
                 creator=project["creator_name"],
+                short_description=project["short_description"],
                 description=project["description"],
                 tags=[
                     TagDTO(

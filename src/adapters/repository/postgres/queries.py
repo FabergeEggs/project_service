@@ -20,7 +20,7 @@ class ProjectQueries:
         """
 
     SELECT_PROJECT_INFO = """
-        SELECT p.id, p.label, p.description, p.creator_id,
+        SELECT p.id, p.label, p.short_description, p.description, p.creator_id,
             du.name AS creator, p.status, p.created_at
         FROM project p
         LEFT JOIN denorm_user du ON du.id = p.creator_id
