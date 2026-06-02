@@ -86,6 +86,7 @@ class ProjectInfoDTO(BaseModel):
     creator_id: UUID
     label: str
     creator: str
+    short_description: str
     description: str
     tags: list[TagDTO]
     created_at: datetime
