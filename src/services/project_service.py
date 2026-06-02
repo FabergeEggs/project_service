@@ -141,15 +141,15 @@ class ProjectService():
                 "Project id is required for update")
 
         try:
-            project = await self._project_repository.get_project_info(project.id)
+            current_project = await self._project_repository.get_project_info(project.id)
         except adapter_errors.ProjectNotFoundError:
             raise project_errors.ProjectNotFoundError(
                 f"Project {project.id} not found")
 
-        if project["status"] == ProjectStatusEnum.DELETED:
+        if current_project["status"] == ProjectStatusEnum.DELETED:
             raise project_errors.ProjectDeletedError(
                 f"Project {project.id} is deleted")
-        if project["status"] == ProjectStatusEnum.FINISHED and project["status"] != ProjectStatusEnum.ACTIVE:
+        if current_project["status"] == ProjectStatusEnum.FINISHED and project.status != ProjectStatusEnum.ACTIVE:
             raise project_errors.ProjectFinishedError(
                 f"Project {project.id} is finished")
 
