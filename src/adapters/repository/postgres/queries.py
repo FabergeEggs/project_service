@@ -36,18 +36,20 @@ class ProjectQueries:
 
     SELECT_PROJECT_STATISTICS = """
         SELECT
-            COUNT(DISTINCT puc.user_id) as members_count,
-            COUNT(t.id) as tasks_count,
-            COALESCE(SUM(t.answer_count), 0) as total_answers_count
+            (SELECT COUNT(puc.user_id)
+             FROM project_user_connection puc
+             WHERE puc.project_id = p.id) as members_count,
+            (SELECT COUNT(t.id)
+             FROM task t
+             WHERE t.project_id = p.id
+               AND t.status != 'DELETED') as tasks_count,
+            (SELECT COALESCE(SUM(t.answer_count), 0)
+             FROM task t
+             WHERE t.project_id = p.id
+               AND t.status != 'DELETED') as total_answers_count
         FROM project p
-        LEFT JOIN project_user_connection puc
-            ON puc.project_id = p.id
-        LEFT JOIN task t
-            ON t.project_id = p.id
-            AND t.status != 'DELETED'
         WHERE p.id = %s
             AND p.status != 'DELETED'
-        GROUP BY p.id
         """
 
     UPDATE_PROJECT = """
